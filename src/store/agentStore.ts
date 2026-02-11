@@ -142,13 +142,16 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
       });
     });
 
-    // Listen for command completion
+    // Listen for command completion (only toast for tracked commands, not diffs)
     await listen<{ cwd: string; exit_code: number | null }>("command-done", (event) => {
       const { cwd, exit_code } = event.payload;
-      if (exit_code === 0) {
-        toast.success("Command completed");
-      } else if (exit_code !== null) {
-        toast.error(`Command exited with code ${exit_code}`);
+      const tracked = get().commandStates[cwd];
+      if (tracked) {
+        if (exit_code === 0) {
+          toast.success("Command completed");
+        } else if (exit_code !== null) {
+          toast.error(`Command exited with code ${exit_code}`);
+        }
       }
       set((state) => {
         const cs = state.commandStates[cwd];

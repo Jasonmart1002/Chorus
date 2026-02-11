@@ -7,6 +7,7 @@ import { useSidebarStore } from "../../store/sidebarStore";
 import { useThemeStore } from "../../store/themeStore";
 import { getDisplayName } from "../../lib/sortAgents";
 import { RunDialog } from "../RunDialog";
+import { DiffDialog } from "../DiffDialog";
 import { IconButton } from "../ui/IconButton";
 import { Badge } from "../ui/Badge";
 import { DropdownMenu, DropdownMenuItem } from "../ui/DropdownMenu";
@@ -44,6 +45,7 @@ export function ContextSummary({ agent }: Props) {
   const statusColor = STATUS_COLORS[agent.status] || theme.textMuted;
   const displayName = getDisplayName(agent, prefs);
   const [showRun, setShowRun] = useState(false);
+  const [showDiff, setShowDiff] = useState(false);
   const [showGitMenu, setShowGitMenu] = useState(false);
   const [showTermMenu, setShowTermMenu] = useState(false);
   const commandState = useAgentStore((s) => s.commandStates[agent.config.cwd]);
@@ -157,6 +159,11 @@ export function ContextSummary({ agent }: Props) {
             onOpenChange={setShowGitMenu}
             align="end"
           >
+            <DropdownMenuItem
+              onClick={() => { setShowGitMenu(false); setShowDiff(true); }}
+            >
+              View diff
+            </DropdownMenuItem>
             {GIT_ACTIONS.map((action) => (
               <DropdownMenuItem
                 key={action.label}
@@ -186,6 +193,7 @@ export function ContextSummary({ agent }: Props) {
       </div>
 
       {showRun && <RunDialog cwd={agent.config.cwd} onClose={() => setShowRun(false)} />}
+      {showDiff && <DiffDialog cwd={agent.config.cwd} onClose={() => setShowDiff(false)} />}
     </>
   );
 }

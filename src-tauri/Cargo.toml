@@ -1,14 +1,14 @@
 [package]
-name = "maestro"
+name = "cadenza"
 version = "0.1.0"
 edition = "2021"
 
 [lib]
-name = "maestro_lib"
+name = "cadenza_lib"
 crate-type = ["lib", "cdylib", "staticlib"]
 
 [[bin]]
-name = "maestro"
+name = "cadenza"
 path = "src/main.rs"
 
 [dependencies]

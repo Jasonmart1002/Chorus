@@ -1,8 +1,8 @@
 {
   "$schema": "https://raw.githubusercontent.com/nicedoc/schemas/master/tauri/tauri.conf.v2.json",
-  "productName": "Maestro",
+  "productName": "Cadenza",
   "version": "0.1.0",
-  "identifier": "com.maestro.app",
+  "identifier": "com.cadenza.app",
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "Maestro",
+        "title": "Cadenza",
         "width": 1200,
         "height": 800,
         "minWidth": 900,
