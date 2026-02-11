@@ -31,7 +31,7 @@ export function useNotifications() {
 
           if (permGranted) {
             sendNotification({
-              title: "Maestro",
+              title: "Cadenza",
               body:
                 reason === "errored"
                   ? `${name} encountered an error`

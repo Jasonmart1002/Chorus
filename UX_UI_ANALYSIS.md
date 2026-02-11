@@ -1,6 +1,6 @@
-# CC-Manager UX/UI Analysis
+# Cadenza UX/UI Analysis
 
-**Prepared for:** CC-Manager v0.1.0
+**Prepared for:** Cadenza v0.1.0
 **Date:** February 2026
 **Scope:** Comprehensive production-readiness audit covering typography, spacing, layout, components, interaction design, accessibility, iconography, and motion
 
@@ -8,7 +8,7 @@
 
 ## Executive Summary
 
-CC-Manager is a Tauri-based desktop application for managing multiple Claude Code agent sessions. The current implementation demonstrates solid engineering fundamentals — a centralized theme system, clean component decomposition, and a well-organized Zustand state layer. The Catppuccin Latte/Mocha color palette is an excellent choice that brings immediate visual credibility and community familiarity.
+Cadenza is a Tauri-based desktop application for managing multiple Claude Code agent sessions. The current implementation demonstrates solid engineering fundamentals — a centralized theme system, clean component decomposition, and a well-organized Zustand state layer. The Catppuccin Latte/Mocha color palette is an excellent choice that brings immediate visual credibility and community familiarity.
 
 However, the UI currently reads as a **developer prototype** rather than a **shipping product**. The gap is not in capability but in polish: inconsistent spacing, an ad-hoc type scale, missing accessibility scaffolding, and inline style proliferation that makes systematic refinement difficult. What follows is a prioritized breakdown of every surface in the app with concrete recommendations to bring it to production quality.
 
@@ -739,4 +739,4 @@ These are the text-on-background combinations that should be checked against WCA
 
 ---
 
-*This analysis is based on a static code review of every component file, style object, and interaction handler in the CC-Manager codebase as of February 2026. Recommendations are ordered by impact and are intended to be implemented incrementally — the app is functional and usable today, and each tier of improvements adds a measurable layer of polish.*
+*This analysis is based on a static code review of every component file, style object, and interaction handler in the Cadenza codebase as of February 2026. Recommendations are ordered by impact and are intended to be implemented incrementally — the app is functional and usable today, and each tier of improvements adds a measurable layer of polish.*

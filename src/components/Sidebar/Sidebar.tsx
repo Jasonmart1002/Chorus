@@ -170,7 +170,7 @@ export function Sidebar() {
         >
           <div style={{ display: "flex", flexDirection: "column" }}>
             <span style={{ fontSize: 14, fontWeight: 700, color: theme.textPrimary, letterSpacing: "-0.02em", fontFamily: theme.fontHeading }}>
-              Maestro
+              Cadenza
             </span>
             <span style={{ fontSize: 9, color: theme.textMuted, letterSpacing: "0.05em", fontFamily: theme.fontHeading }}>
               conduct your opus

@@ -1,9 +1,9 @@
-# CC-Manager Technical Documentation
+# Cadenza Technical Documentation
 
 **Version:** 0.1.0
-**Identifier:** `com.ccmanager.app`
+**Identifier:** `com.cadenza.app`
 
-CC-Manager is a desktop application for managing multiple Claude Code AI agents from a single unified interface. Instead of running separate Claude Code CLI sessions in different terminal windows, CC-Manager lets you create, monitor, control, and interact with many agents simultaneously -- each scoped to its own project directory.
+Cadenza is a desktop application for managing multiple Claude Code AI agents from a single unified interface. Instead of running separate Claude Code CLI sessions in different terminal windows, Cadenza lets you create, monitor, control, and interact with many agents simultaneously -- each scoped to its own project directory.
 
 ---
 
@@ -39,7 +39,7 @@ CC-Manager is a desktop application for managing multiple Claude Code AI agents 
 
 ## Architecture Overview
 
-CC-Manager follows a two-process architecture provided by Tauri 2:
+Cadenza follows a two-process architecture provided by Tauri 2:
 
 ```
 ┌──────────────────────────────────────────────────────────┐
@@ -99,7 +99,7 @@ The frontend communicates with the backend through Tauri's IPC mechanism: `invok
 ## Project Structure
 
 ```
-CC-Manager/
+Cadenza/
 ├── src/                              # Frontend source
 │   ├── main.tsx                      # React entry point
 │   ├── App.tsx                       # Root component (initializes store)
