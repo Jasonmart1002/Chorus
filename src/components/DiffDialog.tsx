@@ -84,7 +84,7 @@ export function DiffDialog({ cwd, onClose }: Props) {
     });
   };
 
-  // Listen for output and done events, filtered to our cwd
+  // Listen for output and done events, then run the initial diff once listeners are ready
   useEffect(() => {
     let unlistenOutput: (() => void) | null = null;
     let unlistenDone: (() => void) | null = null;
@@ -108,6 +108,9 @@ export function DiffDialog({ cwd, onClose }: Props) {
           }
         }
       );
+
+      // Run initial diff only after listeners are registered to avoid race condition
+      runDiff(diffType);
     }
 
     setup();
@@ -115,13 +118,8 @@ export function DiffDialog({ cwd, onClose }: Props) {
       unlistenOutput?.();
       unlistenDone?.();
     };
-  }, [cwd]);
-
-  // Auto-run on mount
-  useEffect(() => {
-    runDiff(diffType);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [cwd]);
 
   // Auto-scroll
   useEffect(() => {
