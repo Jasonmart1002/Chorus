@@ -17,7 +17,7 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Scrollbar styling — light (default) */
+/* Scrollbar styling — light (Catppuccin Latte) */
 ::-webkit-scrollbar {
   width: 6px;
 }
@@ -25,29 +25,29 @@ body {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #B8A4C8;
+  background: #acb0be;
   border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #8B6BAA;
+  background: #7287fd;
 }
 
-/* Scrollbar — dark */
+/* Scrollbar — dark (Catppuccin Mocha) */
 body.theme-dark ::-webkit-scrollbar-thumb {
-  background: #5E4E72;
+  background: #585b70;
 }
 body.theme-dark ::-webkit-scrollbar-thumb:hover {
-  background: #B898D4;
+  background: #b4befe;
 }
 
-/* Selection — light (default) */
+/* Selection — light (Catppuccin Latte) */
 ::selection {
-  background: rgba(139, 107, 170, 0.4);
+  background: rgba(114, 135, 253, 0.3);
 }
 
-/* Selection — dark */
+/* Selection — dark (Catppuccin Mocha) */
 body.theme-dark ::selection {
-  background: rgba(184, 152, 212, 0.35);
+  background: rgba(180, 190, 254, 0.25);
 }
 
 /* Pulse animation for working status */

@@ -38,58 +38,60 @@ export interface ThemeColors {
 }
 
 export const lightTheme: ThemeColors = {
-  bgBase: "#EDE4D8",
-  bgSidebar: "#DDD0E8",
-  bgSurface: "#F5EDE2",
-  bgCard: "#F0E8DD",
+  // Catppuccin Latte
+  bgBase: "#eff1f5",       // Base
+  bgSidebar: "#e6e9ef",    // Mantle
+  bgSurface: "#eff1f5",    // Base
+  bgCard: "#e6e9ef",       // Mantle
 
-  borderColor: "#B8A4C8",
+  borderColor: "#acb0be",  // Surface2
 
-  textPrimary: "#1E1A22",
-  textSecondary: "#504A54",
-  textMuted: "#7E7884",
+  textPrimary: "#4c4f69",  // Text
+  textSecondary: "#5c5f77", // Subtext1
+  textMuted: "#9ca0b0",    // Overlay0
 
-  lavender: "#8B6BAA",
-  lavenderLight: "#D5C8E2",
-  mint: "#4AAF7E",
-  mintLight: "#B8E0CC",
-  peach: "#D87068",
-  peachLight: "#F0CCC8",
-  butter: "#C8A840",
-  butterLight: "#E8DDB8",
-  mauve: "#B8A4C8",
+  lavender: "#7287fd",     // Lavender
+  lavenderLight: "#d6dcf7", // Lavender tint on Base
+  mint: "#40a02b",         // Green
+  mintLight: "#d5e5d7",    // Green tint on Base
+  peach: "#fe640b",        // Peach
+  peachLight: "#f1dcd2",   // Peach tint on Base
+  butter: "#df8e1d",       // Yellow
+  butterLight: "#ede2d5",  // Yellow tint on Base
+  mauve: "#acb0be",        // Surface2
 
   fontHeading: "'Space Mono', monospace",
   fontBody: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
   fontCode: "'JetBrains Mono', monospace",
 
-  shadowChunky: "2px 3px 0 #B8A4C8",
-  shadowDialog: "4px 6px 0 rgba(139,107,170,0.35)",
+  shadowChunky: "2px 3px 0 #acb0be",
+  shadowDialog: "4px 6px 0 rgba(114,135,253,0.25)",
 
   easeSpring: "cubic-bezier(0.34, 1.56, 0.64, 1)",
 };
 
 export const darkTheme: ThemeColors = {
-  bgBase: "#1A1625",
-  bgSidebar: "#211C2E",
-  bgSurface: "#242030",
-  bgCard: "#2C2638",
+  // Catppuccin Mocha
+  bgBase: "#1e1e2e",       // Base
+  bgSidebar: "#181825",    // Mantle
+  bgSurface: "#313244",    // Surface0
+  bgCard: "#313244",       // Surface0
 
-  borderColor: "#3E3650",
+  borderColor: "#585b70",  // Surface2
 
-  textPrimary: "#EDE8F2",
-  textSecondary: "#B8B0C4",
-  textMuted: "#7A7288",
+  textPrimary: "#cdd6f4",  // Text
+  textSecondary: "#bac2de", // Subtext1
+  textMuted: "#7f849c",    // Overlay1
 
-  lavender: "#B898D4",
-  lavenderLight: "#352A4A",
-  mint: "#5EE09E",
-  mintLight: "#1A3028",
-  peach: "#F28878",
-  peachLight: "#382028",
-  butter: "#E8CC58",
-  butterLight: "#332E1A",
-  mauve: "#5E4E72",
+  lavender: "#b4befe",     // Lavender
+  lavenderLight: "#35364d", // Lavender tint on Base
+  mint: "#a6e3a1",         // Green
+  mintLight: "#2e363c",    // Green tint on Base
+  peach: "#fab387",        // Peach
+  peachLight: "#383039",   // Peach tint on Base
+  butter: "#f9e2af",       // Yellow
+  butterLight: "#38363e",  // Yellow tint on Base
+  mauve: "#585b70",        // Surface2
 
   fontHeading: "'Space Mono', monospace",
   fontBody: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
