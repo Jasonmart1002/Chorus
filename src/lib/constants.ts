@@ -1,9 +1,9 @@
 export const STATUS_COLORS: Record<string, string> = {
-  idle: "#A09898",
-  working: "#D4B860",
-  awaiting_input: "#6BBF96",
-  errored: "#E08880",
-  exited: "#B8B0B0",
+  idle: "#9ca0b0",
+  working: "#df8e1d",
+  awaiting_input: "#40a02b",
+  errored: "#d20f39",
+  exited: "#9ca0b0",
 };
 
 export const STATUS_LABELS: Record<string, string> = {

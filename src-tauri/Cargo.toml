@@ -1,14 +1,14 @@
 [package]
-name = "cc-manager"
+name = "maestro"
 version = "0.1.0"
 edition = "2021"
 
 [lib]
-name = "cc_manager_lib"
+name = "maestro_lib"
 crate-type = ["lib", "cdylib", "staticlib"]
 
 [[bin]]
-name = "cc-manager"
+name = "maestro"
 path = "src/main.rs"
 
 [dependencies]

@@ -31,7 +31,7 @@ export function useNotifications() {
 
           if (permGranted) {
             sendNotification({
-              title: "CC-Manager",
+              title: "Maestro",
               body:
                 reason === "errored"
                   ? `${name} encountered an error`

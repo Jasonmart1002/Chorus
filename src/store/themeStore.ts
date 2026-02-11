@@ -4,6 +4,11 @@ import { lightTheme, darkTheme, type ThemeColors } from "../lib/theme";
 
 type ThemeMode = "light" | "dark";
 
+function getInitialMode(): ThemeMode {
+  if (window.matchMedia("(prefers-color-scheme: dark)").matches) return "dark";
+  return "light";
+}
+
 interface ThemeStore {
   mode: ThemeMode;
   current: ThemeColors;
@@ -21,8 +26,8 @@ function themeFor(mode: ThemeMode): ThemeColors {
 export const useThemeStore = create<ThemeStore>()(
   persist(
     (set) => ({
-      mode: "light",
-      current: lightTheme,
+      mode: getInitialMode(),
+      current: themeFor(getInitialMode()),
       toggle: () =>
         set((state) => {
           const next: ThemeMode = state.mode === "light" ? "dark" : "light";
@@ -35,7 +40,7 @@ export const useThemeStore = create<ThemeStore>()(
       partialize: (state) => ({ mode: state.mode }),
       merge: (persisted, current) => {
         const p = persisted as { mode?: ThemeMode } | undefined;
-        const mode = p?.mode || "light";
+        const mode = p?.mode || getInitialMode();
         applyBodyClass(mode);
         return { ...current, mode, current: themeFor(mode) };
       },

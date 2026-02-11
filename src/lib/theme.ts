@@ -29,6 +29,14 @@ export interface ThemeColors {
   fontBody: string;
   fontCode: string;
 
+  // Semantic
+  textOnAccent: string;
+  overlayColor: string;
+  hoverOverlay: string;
+
+  // Elevation
+  elevation1: string;
+
   // Shadows
   shadowChunky: string;
   shadowDialog: string;
@@ -64,6 +72,12 @@ export const lightTheme: ThemeColors = {
   fontBody: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
   fontCode: "'JetBrains Mono', monospace",
 
+  textOnAccent: "#eff1f5",
+  overlayColor: "rgba(76, 79, 105, 0.35)",
+  hoverOverlay: "rgba(114, 135, 253, 0.08)",
+
+  elevation1: "0 1px 3px rgba(0,0,0,0.08)",
+
   shadowChunky: "2px 3px 0 #acb0be",
   shadowDialog: "4px 6px 0 rgba(114,135,253,0.25)",
 
@@ -97,8 +111,26 @@ export const darkTheme: ThemeColors = {
   fontBody: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
   fontCode: "'JetBrains Mono', monospace",
 
+  textOnAccent: "#1e1e2e",
+  overlayColor: "rgba(0, 0, 0, 0.55)",
+  hoverOverlay: "rgba(180, 190, 254, 0.06)",
+
+  elevation1: "0 1px 3px rgba(0,0,0,0.3)",
+
   shadowChunky: "2px 3px 0 rgba(0,0,0,0.5)",
   shadowDialog: "4px 6px 0 rgba(0,0,0,0.6)",
 
   easeSpring: "cubic-bezier(0.34, 1.56, 0.64, 1)",
 };
+
+export const spacing = {
+  1: 4, 2: 8, 3: 12, 4: 16, 5: 20, 6: 24, 8: 32,
+} as const;
+
+export const radius = {
+  sm: 4, md: 8, lg: 12, full: 9999,
+} as const;
+
+export const typography = {
+  xs: 10, sm: 12, base: 14, lg: 16, xl: 18,
+} as const;

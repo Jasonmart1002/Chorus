@@ -9,10 +9,32 @@ import {
   HelpCircle,
   FileText,
   User,
+  Pencil,
+  Globe,
+  Search,
+  FolderSearch,
+  ListTodo,
 } from "lucide-react";
 import type { SDKMessage, ContentBlock, ToolUseBlock } from "../../types/messages";
 import { useAgentStore } from "../../store/agentStore";
 import { useThemeStore } from "../../store/themeStore";
+import { Button } from "../ui/Button";
+import { Badge } from "../ui/Badge";
+import { MarkdownRenderer } from "../ui/MarkdownRenderer";
+
+const TOOL_ICONS: Record<string, typeof Wrench> = {
+  Read: FileText,
+  Edit: Pencil,
+  Write: FileText,
+  Bash: Terminal,
+  Glob: FolderSearch,
+  Grep: Search,
+  WebSearch: Globe,
+  WebFetch: Globe,
+  Task: ListTodo,
+  TaskCreate: ListTodo,
+  TaskUpdate: ListTodo,
+};
 
 interface Props {
   messages: SDKMessage[];
@@ -179,7 +201,7 @@ function RenderItemView({ item, agentId }: { item: RenderItem; agentId: string }
               border: `1px solid ${theme.lavender}`,
             }}
           >
-            <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 4 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 4 }}>
               <User size={10} color={theme.lavender} />
               <span style={{ fontSize: 10, color: theme.lavender, fontWeight: 600 }}>You</span>
             </div>
@@ -200,26 +222,14 @@ function RenderItemView({ item, agentId }: { item: RenderItem; agentId: string }
 
     case "system_init":
       return (
-        <div style={{ display: "flex", alignItems: "center", gap: 6, color: theme.textMuted, fontSize: 12 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, color: theme.textMuted, fontSize: 12 }}>
           <Terminal size={12} />
           <span>Session initialized</span>
         </div>
       );
 
     case "text":
-      return (
-        <div
-          style={{
-            fontSize: 13,
-            color: theme.textPrimary,
-            lineHeight: 1.6,
-            whiteSpace: "pre-wrap",
-            wordBreak: "break-word",
-          }}
-        >
-          {item.text}
-        </div>
-      );
+      return <MarkdownRenderer content={item.text} />;
 
     case "tool_use":
       return <ToolUseView block={item.block} />;
@@ -241,13 +251,13 @@ function RenderItemView({ item, agentId }: { item: RenderItem; agentId: string }
       return (
         <div
           style={{
-            padding: "6px 12px",
-            borderRadius: 6,
+            padding: "8px 12px",
+            borderRadius: 8,
             background: isError ? theme.peachLight : theme.mintLight,
             border: `1px solid ${isError ? theme.peach : theme.mint}`,
             display: "flex",
             alignItems: "center",
-            gap: 6,
+            gap: 8,
             fontSize: 11,
             color: theme.textSecondary,
           }}
@@ -331,13 +341,13 @@ function AskUserQuestionView({ block, agentId }: { block: ToolUseBlock; agentId:
   return (
     <div
       style={{
-        padding: "14px 16px",
+        padding: "12px 16px",
         borderRadius: 8,
         background: theme.lavenderLight,
         border: `1px solid ${theme.lavender}`,
       }}
     >
-      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 12 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
         <HelpCircle size={14} color={theme.lavender} />
         <span style={{ fontSize: 12, fontWeight: 600, color: theme.textPrimary, fontFamily: theme.fontHeading }}>
           Question from Claude
@@ -345,7 +355,7 @@ function AskUserQuestionView({ block, agentId }: { block: ToolUseBlock; agentId:
       </div>
 
       {questions.map((q, qIdx) => (
-        <div key={qIdx} style={{ marginBottom: qIdx < questions.length - 1 ? 14 : 0 }}>
+        <div key={qIdx} style={{ marginBottom: qIdx < questions.length - 1 ? 12 : 0 }}>
           {q.header && (
             <div style={{ fontSize: 10, fontWeight: 600, color: theme.textMuted, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4 }}>
               {q.header}
@@ -358,27 +368,30 @@ function AskUserQuestionView({ block, agentId }: { block: ToolUseBlock; agentId:
             {q.options.map((opt) => {
               const selected = (answered[qIdx] || []).includes(opt.label);
               return (
-                <button
+                <Button
                   key={opt.label}
+                  variant={selected ? "primary" : "secondary"}
                   onClick={() => canRespond && handleSelect(qIdx, opt.label, !!q.multiSelect)}
                   disabled={!canRespond}
                   style={{
-                    padding: "8px 12px",
-                    borderRadius: 6,
-                    border: selected ? `1px solid ${theme.lavender}` : `1px solid ${theme.borderColor}`,
-                    background: selected ? theme.lavenderLight : theme.bgCard,
-                    color: theme.textPrimary,
-                    cursor: canRespond ? "pointer" : "default",
+                    justifyContent: "flex-start",
                     textAlign: "left",
-                    fontSize: 13,
-                    transition: "all 0.1s",
+                    padding: "8px 12px",
+                    background: selected ? theme.lavenderLight : theme.bgCard,
+                    border: selected ? `1px solid ${theme.lavender}` : `1px solid ${theme.borderColor}`,
+                    color: theme.textPrimary,
+                    boxShadow: "none",
+                    fontWeight: 400,
+                    fontFamily: "inherit",
                   }}
                 >
-                  <div style={{ fontWeight: 500 }}>{opt.label}</div>
-                  {opt.description && (
-                    <div style={{ fontSize: 11, color: theme.textSecondary, marginTop: 2 }}>{opt.description}</div>
-                  )}
-                </button>
+                  <div>
+                    <div style={{ fontWeight: 500 }}>{opt.label}</div>
+                    {opt.description && (
+                      <div style={{ fontSize: 11, color: theme.textSecondary, marginTop: 2 }}>{opt.description}</div>
+                    )}
+                  </div>
+                </Button>
               );
             })}
           </div>
@@ -386,24 +399,13 @@ function AskUserQuestionView({ block, agentId }: { block: ToolUseBlock; agentId:
       ))}
 
       {canRespond && allAnswered && (
-        <button
+        <Button
+          variant="primary"
           onClick={handleSubmit}
-          style={{
-            marginTop: 12,
-            padding: "6px 16px",
-            background: theme.lavender,
-            border: "none",
-            borderRadius: 6,
-            color: "white",
-            fontSize: 12,
-            fontWeight: 600,
-            cursor: "pointer",
-            boxShadow: theme.shadowChunky,
-            fontFamily: theme.fontHeading,
-          }}
+          style={{ marginTop: 12, fontSize: 12 }}
         >
           Send Answer
-        </button>
+        </Button>
       )}
 
       {!canRespond && Object.keys(answered).length === 0 && (
@@ -439,13 +441,13 @@ function PlanView({ block, agentId }: { block: ToolUseBlock; agentId: string }) 
   return (
     <div
       style={{
-        padding: "14px 16px",
+        padding: "12px 16px",
         borderRadius: 8,
         background: theme.mintLight,
         border: `1px solid ${theme.mint}`,
       }}
     >
-      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
         <FileText size={14} color={theme.mint} />
         <span style={{ fontSize: 12, fontWeight: 600, color: theme.textPrimary, fontFamily: theme.fontHeading }}>
           Plan Ready for Review
@@ -454,56 +456,26 @@ function PlanView({ block, agentId }: { block: ToolUseBlock; agentId: string }) 
       {plan && (
         <div
           style={{
-            fontSize: 12,
-            color: theme.textPrimary,
-            lineHeight: 1.5,
-            whiteSpace: "pre-wrap",
-            wordBreak: "break-word",
             maxHeight: 300,
             overflow: "auto",
             marginBottom: canRespond ? 12 : 0,
           }}
         >
-          {plan}
+          <MarkdownRenderer content={plan} />
         </div>
       )}
       {canRespond && (
         <div style={{ display: "flex", gap: 8 }}>
-          <button
-            onClick={handleApprove}
-            style={{
-              padding: "6px 16px",
-              background: theme.mint,
-              border: "none",
-              borderRadius: 6,
-              color: "white",
-              fontSize: 12,
-              fontWeight: 600,
-              cursor: "pointer",
-              boxShadow: theme.shadowChunky,
-              fontFamily: theme.fontHeading,
-            }}
-          >
+          <Button variant="primary" color={theme.mint} onClick={handleApprove} style={{ fontSize: 12 }}>
             Approve Plan
-          </button>
-          <button
-            onClick={handleReject}
-            style={{
-              padding: "6px 16px",
-              background: "transparent",
-              border: `1px solid ${theme.borderColor}`,
-              borderRadius: 6,
-              color: theme.textSecondary,
-              fontSize: 12,
-              cursor: "pointer",
-            }}
-          >
+          </Button>
+          <Button variant="secondary" onClick={handleReject} style={{ fontSize: 12 }}>
             Request Changes
-          </button>
+          </Button>
         </div>
       )}
       {sent && (
-        <div style={{ fontSize: 11, color: theme.textMuted, marginTop: 6, fontStyle: "italic" }}>
+        <div style={{ fontSize: 11, color: theme.textMuted, marginTop: 8, fontStyle: "italic" }}>
           Response sent
         </div>
       )}
@@ -533,6 +505,7 @@ function ToolGroupView({ name, blocks }: { name: string; blocks: ToolUseBlock[] 
   const [expanded, setExpanded] = useState(false);
   const theme = useThemeStore((s) => s.current);
   const summaryFn = TOOL_SUMMARIES[name];
+  const Icon = TOOL_ICONS[name] || Wrench;
 
   const summaries = blocks
     .map((b) => {
@@ -549,7 +522,7 @@ function ToolGroupView({ name, blocks }: { name: string; blocks: ToolUseBlock[] 
   return (
     <div
       style={{
-        borderRadius: 6,
+        borderRadius: 8,
         background: theme.lavenderLight,
         border: `1px solid ${theme.lavender}40`,
         overflow: "hidden",
@@ -558,10 +531,10 @@ function ToolGroupView({ name, blocks }: { name: string; blocks: ToolUseBlock[] 
       <div
         onClick={() => setExpanded(!expanded)}
         style={{
-          padding: "6px 10px",
+          padding: "8px 12px",
           display: "flex",
           alignItems: "center",
-          gap: 6,
+          gap: 8,
           cursor: "pointer",
           userSelect: "none",
         }}
@@ -571,20 +544,11 @@ function ToolGroupView({ name, blocks }: { name: string; blocks: ToolUseBlock[] 
         ) : (
           <ChevronRight size={12} color={theme.textMuted} />
         )}
-        <Wrench size={11} color={theme.lavender} />
+        <Icon size={11} color={theme.lavender} />
         <span style={{ fontSize: 12, fontWeight: 600, color: theme.textPrimary }}>{name}</span>
-        <span
-          style={{
-            background: `${theme.lavender}33`,
-            color: theme.textSecondary,
-            fontSize: 10,
-            fontWeight: 700,
-            padding: "1px 6px",
-            borderRadius: 10,
-          }}
-        >
+        <Badge variant="count" color={theme.lavender}>
           &times;{blocks.length}
-        </span>
+        </Badge>
         {!expanded && preview && (
           <span
             style={{
@@ -623,11 +587,12 @@ function ToolUseView({ block }: { block: ToolUseBlock }) {
   const input = block.input as Record<string, unknown>;
   const summaryFn = TOOL_SUMMARIES[block.name];
   const summary = summaryFn ? summaryFn(input) : "";
+  const Icon = TOOL_ICONS[block.name] || Wrench;
 
   return (
     <div
       style={{
-        borderRadius: 6,
+        borderRadius: 8,
         background: theme.lavenderLight,
         border: `1px solid ${theme.lavender}40`,
         overflow: "hidden",
@@ -636,10 +601,10 @@ function ToolUseView({ block }: { block: ToolUseBlock }) {
       <div
         onClick={() => setExpanded(!expanded)}
         style={{
-          padding: "6px 10px",
+          padding: "8px 12px",
           display: "flex",
           alignItems: "center",
-          gap: 6,
+          gap: 8,
           cursor: "pointer",
           userSelect: "none",
         }}
@@ -649,7 +614,7 @@ function ToolUseView({ block }: { block: ToolUseBlock }) {
         ) : (
           <ChevronRight size={12} color={theme.textMuted} />
         )}
-        <Wrench size={11} color={theme.lavender} />
+        <Icon size={11} color={theme.lavender} />
         <span style={{ fontSize: 12, fontWeight: 600, color: theme.textPrimary }}>{block.name}</span>
         {summary && (
           <span
@@ -669,7 +634,7 @@ function ToolUseView({ block }: { block: ToolUseBlock }) {
       {expanded && (
         <div
           style={{
-            padding: "6px 10px",
+            padding: "8px 12px",
             borderTop: `1px solid ${theme.lavender}30`,
             fontSize: 11,
             color: theme.textSecondary,

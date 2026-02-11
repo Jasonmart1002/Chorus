@@ -2,19 +2,21 @@ import { useState, useRef, useEffect } from "react";
 import { Send, ChevronDown } from "lucide-react";
 import { useAgentStore } from "../../store/agentStore";
 import { useThemeStore } from "../../store/themeStore";
+import { IconButton } from "../ui/IconButton";
+import { DropdownMenu, DropdownMenuItem } from "../ui/DropdownMenu";
 
 type Mode = "normal" | "plan";
 
 interface ModeConfig {
   id: Mode;
   label: string;
-  getColor: (lavender: string) => string;
+  getColor: (lavender: string, butter: string) => string;
   description: string;
 }
 
 const MODES: ModeConfig[] = [
   { id: "normal", label: "Normal", getColor: (lav) => lav, description: "Execute directly" },
-  { id: "plan", label: "Plan", getColor: () => "#C8A951", description: "Plan first, then implement" },
+  { id: "plan", label: "Plan", getColor: (_lav, butter) => butter, description: "Plan first, then implement" },
 ];
 
 interface Props {
@@ -29,21 +31,10 @@ export function PromptInput({ agentId, disabled }: Props) {
   const sendPrompt = useAgentStore((s) => s.sendPrompt);
   const theme = useThemeStore((s) => s.current);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     textareaRef.current?.focus();
   }, [agentId]);
-
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setShowModeMenu(false);
-      }
-    };
-    if (showModeMenu) document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [showModeMenu]);
 
   const handleSend = async () => {
     const trimmed = text.trim();
@@ -85,7 +76,8 @@ export function PromptInput({ agentId, disabled }: Props) {
   }, [text]);
 
   const currentMode = MODES.find((m) => m.id === mode)!;
-  const currentColor = currentMode.getColor(theme.lavender);
+  const currentColor = currentMode.getColor(theme.lavender, theme.butter);
+  const canSend = !!(text.trim() && !disabled);
 
   return (
     <div
@@ -101,9 +93,9 @@ export function PromptInput({ agentId, disabled }: Props) {
           gap: 8,
           alignItems: "flex-end",
           background: theme.bgBase,
-          borderRadius: 10,
+          borderRadius: 8,
           padding: "8px 12px",
-          border: `1px solid ${mode === "plan" ? `${theme.butter}` : theme.borderColor}`,
+          border: `1px solid ${mode === "plan" ? theme.butter : theme.borderColor}`,
           transition: "border-color 0.15s",
         }}
       >
@@ -128,23 +120,18 @@ export function PromptInput({ agentId, disabled }: Props) {
             maxHeight: 200,
           }}
         />
-        <button
+        <IconButton
+          icon={<Send size={16} color={theme.textOnAccent} />}
+          tooltip="Send prompt"
           onClick={handleSend}
-          disabled={!text.trim() || disabled}
+          disabled={!canSend}
+          size="md"
           style={{
-            background: text.trim() && !disabled ? currentColor : theme.borderColor,
-            border: "none",
-            borderRadius: 6,
-            padding: "6px 8px",
-            cursor: text.trim() && !disabled ? "pointer" : "not-allowed",
-            display: "flex",
-            alignItems: "center",
-            transition: "background 0.15s",
-            flexShrink: 0,
+            background: canSend ? currentColor : theme.borderColor,
+            borderRadius: 8,
+            opacity: canSend ? 1 : 0.5,
           }}
-        >
-          <Send size={16} color="white" />
-        </button>
+        />
       </div>
 
       <div
@@ -152,106 +139,79 @@ export function PromptInput({ agentId, disabled }: Props) {
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          marginTop: 6,
+          marginTop: 8,
           fontSize: 11,
           color: theme.textMuted,
         }}
       >
-        <div style={{ position: "relative" }} ref={menuRef}>
-          <button
-            onClick={() => setShowModeMenu(!showModeMenu)}
-            style={{
-              background: "none",
-              border: `1px solid ${theme.borderColor}`,
-              borderRadius: 5,
-              padding: "2px 8px 2px 6px",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              gap: 4,
-              fontSize: 11,
-              color: currentColor,
-              fontWeight: 600,
-              fontFamily: theme.fontHeading,
-            }}
-          >
-            <div
+        <DropdownMenu
+          trigger={
+            <button
+              onClick={() => setShowModeMenu(!showModeMenu)}
               style={{
-                width: 6,
-                height: 6,
-                borderRadius: "50%",
-                background: currentColor,
-              }}
-            />
-            {currentMode.label}
-            <ChevronDown size={10} />
-          </button>
-
-          {showModeMenu && (
-            <div
-              style={{
-                position: "absolute",
-                bottom: "100%",
-                left: 0,
-                marginBottom: 4,
-                background: theme.bgCard,
+                background: "none",
                 border: `1px solid ${theme.borderColor}`,
                 borderRadius: 8,
-                padding: 4,
-                minWidth: 180,
-                boxShadow: theme.shadowDialog,
-                zIndex: 50,
-                animation: "springIn 0.2s ease-out",
+                padding: "2px 8px",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: 4,
+                fontSize: 11,
+                color: currentColor,
+                fontWeight: 600,
+                fontFamily: theme.fontHeading,
               }}
             >
-              {MODES.map((m) => {
-                const mColor = m.getColor(theme.lavender);
-                return (
-                  <button
-                    key={m.id}
-                    onClick={() => {
-                      setMode(m.id);
-                      setShowModeMenu(false);
-                    }}
+              <div
+                style={{
+                  width: 8,
+                  height: 8,
+                  borderRadius: "50%",
+                  background: currentColor,
+                }}
+              />
+              {currentMode.label}
+              <ChevronDown size={10} />
+            </button>
+          }
+          open={showModeMenu}
+          onOpenChange={setShowModeMenu}
+          align="start"
+          side="top"
+        >
+          {MODES.map((m) => {
+            const mColor = m.getColor(theme.lavender, theme.butter);
+            return (
+              <DropdownMenuItem
+                key={m.id}
+                onClick={() => {
+                  setMode(m.id);
+                  setShowModeMenu(false);
+                }}
+                active={mode === m.id}
+                icon={
+                  <div
                     style={{
-                      width: "100%",
-                      padding: "8px 10px",
-                      background: mode === m.id ? theme.lavenderLight : "transparent",
-                      border: "none",
-                      borderRadius: 6,
-                      cursor: "pointer",
-                      textAlign: "left",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 8,
+                      width: 8,
+                      height: 8,
+                      borderRadius: "50%",
+                      background: mColor,
+                      flexShrink: 0,
                     }}
-                    onMouseEnter={(e) => (e.currentTarget.style.background = theme.lavenderLight)}
-                    onMouseLeave={(e) =>
-                      (e.currentTarget.style.background =
-                        mode === m.id ? theme.lavenderLight : "transparent")
-                    }
-                  >
-                    <div
-                      style={{
-                        width: 8,
-                        height: 8,
-                        borderRadius: "50%",
-                        background: mColor,
-                        flexShrink: 0,
-                      }}
-                    />
-                    <div>
-                      <div style={{ fontSize: 12, fontWeight: 600, color: theme.textPrimary }}>
-                        {m.label}
-                      </div>
-                      <div style={{ fontSize: 10, color: theme.textMuted }}>{m.description}</div>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          )}
-        </div>
+                  />
+                }
+              >
+                <div>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: theme.textPrimary }}>
+                    {m.label}
+                  </div>
+                  <div style={{ fontSize: 10, color: theme.textMuted }}>{m.description}</div>
+                </div>
+              </DropdownMenuItem>
+            );
+          })}
+        </DropdownMenu>
 
         <span>
           Shift+Tab to switch mode &middot; Cmd+Enter to send

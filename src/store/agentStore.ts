@@ -9,6 +9,7 @@ import type {
   SDKMessage,
 } from "../types/messages";
 import { useSidebarStore } from "./sidebarStore";
+import { toast } from "./toastStore";
 
 export interface CommandState {
   cwd: string;
@@ -144,6 +145,11 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
     // Listen for command completion
     await listen<{ cwd: string; exit_code: number | null }>("command-done", (event) => {
       const { cwd, exit_code } = event.payload;
+      if (exit_code === 0) {
+        toast.success("Command completed");
+      } else if (exit_code !== null) {
+        toast.error(`Command exited with code ${exit_code}`);
+      }
       set((state) => {
         const cs = state.commandStates[cwd];
         if (!cs) return state;
@@ -198,6 +204,7 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
       selectedAgentId: result.agent_id,
     }));
 
+    toast.success("Agent created");
     return result.agent_id;
   },
 
@@ -213,7 +220,12 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
         attentionSet: restAttention,
       };
     });
-    await invoke("send_prompt", { agentId, text });
+    try {
+      await invoke("send_prompt", { agentId, text });
+    } catch (err) {
+      toast.error(`Failed to send: ${String(err)}`);
+      throw err;
+    }
   },
 
   stopAgent: async (agentId) => {
@@ -239,6 +251,7 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
           state.selectedAgentId === agentId ? null : state.selectedAgentId,
       };
     });
+    toast.info("Agent removed");
   },
 
   selectAgent: (agentId) => {
@@ -265,6 +278,7 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
       command,
       envVars: envVars || null,
     }).catch((err) => {
+      toast.error(`Command failed: ${String(err)}`);
       set((state) => {
         const cs = state.commandStates[cwd];
         if (!cs) return state;

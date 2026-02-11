@@ -6,8 +6,8 @@ import { sortAgents } from "../lib/sortAgents";
 import { useNotifications } from "../hooks/useNotifications";
 import { Sidebar } from "./Sidebar/Sidebar";
 import { MainPanel } from "./MainPanel/MainPanel";
-import { NotificationBanner } from "./Queue/NotificationBanner";
 import { NewAgentDialog } from "./NewAgentDialog";
+import { ToastContainer } from "./ui/ToastContainer";
 
 export function Layout() {
   const init = useAgentStore((s) => s.init);
@@ -35,10 +35,12 @@ export function Layout() {
         const idx = parseInt(e.key) - 1;
         const sidebarState = useSidebarStore.getState();
         const getPrefs = sidebarState.getPrefs;
+        const attentionSet = useAgentStore.getState().attentionSet;
         const visibleAgents = sortAgents(
           Object.values(agents).filter((a) => !getPrefs(a.id).archived),
           getPrefs,
-          sidebarState.manualOrder
+          sidebarState.manualOrder,
+          attentionSet
         );
         if (idx < visibleAgents.length) {
           selectAgent(visibleAgents[idx].id);
@@ -69,10 +71,10 @@ export function Layout() {
     >
       <Sidebar />
       <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-        <NotificationBanner />
         <MainPanel />
       </div>
       {showNewAgent && <NewAgentDialog onClose={() => setShowNewAgent(false)} />}
+      <ToastContainer />
     </div>
   );
 }

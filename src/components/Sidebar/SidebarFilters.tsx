@@ -1,6 +1,7 @@
 import { Search } from "lucide-react";
 import { useSidebarStore, type StatusFilter } from "../../store/sidebarStore";
 import { useThemeStore } from "../../store/themeStore";
+import { Button } from "../ui/Button";
 
 const FILTERS: { label: string; value: StatusFilter }[] = [
   { label: "All", value: "all" },
@@ -16,15 +17,15 @@ export function SidebarFilters() {
   const theme = useThemeStore((s) => s.current);
 
   return (
-    <div style={{ padding: "8px 8px 4px", display: "flex", flexDirection: "column", gap: 6 }}>
+    <div style={{ padding: "8px 8px 4px", display: "flex", flexDirection: "column", gap: 8 }}>
       <div
         style={{
           display: "flex",
           alignItems: "center",
-          gap: 6,
+          gap: 8,
           background: theme.bgCard,
-          borderRadius: 6,
-          padding: "5px 8px",
+          borderRadius: 8,
+          padding: "4px 8px",
           border: `1px solid ${theme.borderColor}`,
         }}
       >
@@ -44,29 +45,28 @@ export function SidebarFilters() {
           }}
         />
       </div>
-      <div style={{ display: "flex", gap: 2 }}>
+      <div style={{ display: "flex", gap: 4 }}>
         {FILTERS.map((f) => (
-          <button
+          <Button
             key={f.value}
+            variant="ghost"
+            size="sm"
             onClick={() => setStatusFilter(f.value)}
             style={{
               flex: 1,
-              padding: "3px 0",
+              padding: "4px 0",
               background: statusFilter === f.value ? theme.lavenderLight : "transparent",
               border: statusFilter === f.value
                 ? `1px solid ${theme.lavender}`
                 : "1px solid transparent",
-              borderRadius: 5,
+              borderRadius: 8,
               color: statusFilter === f.value ? theme.textPrimary : theme.textMuted,
               fontSize: 11,
               fontWeight: 600,
-              cursor: "pointer",
-              transition: "all 0.15s",
-              fontFamily: theme.fontHeading,
             }}
           >
             {f.label}
-          </button>
+          </Button>
         ))}
       </div>
     </div>

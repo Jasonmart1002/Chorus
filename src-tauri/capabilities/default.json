@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/nicedoc/schemas/master/tauri/capability.json",
   "identifier": "default",
-  "description": "Default capabilities for CC-Manager",
+  "description": "Default capabilities for Maestro",
   "windows": ["main"],
   "permissions": [
     "core:default",

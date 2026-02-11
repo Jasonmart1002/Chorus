@@ -50,10 +50,23 @@ body.theme-dark ::selection {
   background: rgba(180, 190, 254, 0.25);
 }
 
+/* Universal transition base */
+button, input, textarea, select {
+  transition: background-color 0.15s ease, border-color 0.15s ease,
+              color 0.15s ease, box-shadow 0.15s ease,
+              opacity 0.15s ease, transform 0.1s ease, filter 0.1s ease;
+}
+
+/* Disabled state base */
+button:disabled, input:disabled, textarea:disabled, select:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* Pulse animation for working status */
 @keyframes pulse {
   0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
+  50% { opacity: 0.7; }
 }
 
 /* Spin animation for loaders */
@@ -75,15 +88,46 @@ body.theme-dark ::selection {
   100% { transform: translateY(0); opacity: 1; }
 }
 
-/* Attention pulse */
-@keyframes attentionPulse {
-  0%, 100% { box-shadow: 0 0 0 0 currentColor; }
-  50% { box-shadow: 0 0 0 4px currentColor; }
+/* Fade in animation */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
-/* Input/textarea focus */
-textarea:focus, input:focus, select:focus {
-  outline: none;
+/* Slide in from right (toast enter) */
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(100%); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+/* Slide out to right (toast exit) */
+@keyframes slideOutRight {
+  from { opacity: 1; transform: translateX(0); }
+  to { opacity: 0; transform: translateX(100%); }
+}
+
+/* Focus ring — light (Catppuccin Latte Lavender) */
+textarea:focus-visible, input:focus-visible, select:focus-visible, button:focus-visible {
+  outline: 2px solid rgba(114, 135, 253, 0.5);
+  outline-offset: 2px;
+}
+
+/* Focus ring — dark (Catppuccin Mocha Lavender) */
+body.theme-dark textarea:focus-visible, body.theme-dark input:focus-visible,
+body.theme-dark select:focus-visible, body.theme-dark button:focus-visible {
+  outline-color: rgba(180, 190, 254, 0.5);
+}
+
+/* Placeholder styling */
+::placeholder { color: #9ca0b0; opacity: 0.7; }
+body.theme-dark ::placeholder { color: #7f849c; opacity: 0.7; }
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 /* Prevent text selection on drag regions */

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Archive, Sun, Moon } from "lucide-react";
+import { Sun, Moon } from "lucide-react";
 import { useAgentStore } from "../../store/agentStore";
 import { useSidebarStore } from "../../store/sidebarStore";
 import { useThemeStore } from "../../store/themeStore";
@@ -8,6 +8,7 @@ import { AgentCard } from "./AgentCard";
 import { SidebarFilters } from "./SidebarFilters";
 import { NewAgentButton } from "./NewAgentButton";
 import { NewAgentDialog } from "../NewAgentDialog";
+import { IconButton } from "../ui/IconButton";
 
 const DRAG_THRESHOLD = 5;
 
@@ -19,8 +20,6 @@ export function Sidebar() {
   const getPrefs = useSidebarStore((s) => s.getPrefs);
   const searchQuery = useSidebarStore((s) => s.searchQuery);
   const statusFilter = useSidebarStore((s) => s.statusFilter);
-  const showArchived = useSidebarStore((s) => s.showArchived);
-  const setShowArchived = useSidebarStore((s) => s.setShowArchived);
   const manualOrder = useSidebarStore((s) => s.manualOrder);
   const moveAgent = useSidebarStore((s) => s.moveAgent);
   const setManualOrder = useSidebarStore((s) => s.setManualOrder);
@@ -33,17 +32,14 @@ export function Sidebar() {
   const [dragId, setDragId] = useState<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
 
-  // Pointer-based drag tracking (all refs to avoid stale closures)
   const pointerDown = useRef<{ id: string; y: number } | null>(null);
   const draggingRef = useRef(false);
   const dragOverRef = useRef<string | null>(null);
-  const didDragRef = useRef(false); // stays true until next frame after pointerup
+  const didDragRef = useRef(false);
   const cardRects = useRef<Map<string, DOMRect>>(new Map());
   const listRef = useRef<HTMLDivElement>(null);
 
   const allAgents = Object.values(agents);
-  const activeAgents = allAgents.filter((a) => !getPrefs(a.id).archived);
-  const archivedAgents = allAgents.filter((a) => getPrefs(a.id).archived);
 
   const matchesSearch = (a: typeof allAgents[0]) => {
     if (!searchQuery) return true;
@@ -61,12 +57,12 @@ export function Sidebar() {
   };
 
   const filteredActive = sortAgents(
-    activeAgents.filter((a) => matchesSearch(a) && matchesStatus(a)),
+    allAgents.filter((a) => matchesSearch(a) && matchesStatus(a)),
     getPrefs,
-    manualOrder
+    manualOrder,
+    attentionSet
   );
 
-  // Sync: ensure all agent IDs are in manualOrder
   useEffect(() => {
     const ids = filteredActive.map((a) => a.id);
     const currentOrder = useSidebarStore.getState().manualOrder;
@@ -76,14 +72,6 @@ export function Sidebar() {
     }
   }, [filteredActive.length, setManualOrder]);
 
-  const filteredArchived = sortAgents(
-    archivedAgents.filter((a) => matchesSearch(a)),
-    getPrefs
-  );
-
-  const attentionCount = Object.keys(attentionSet).length;
-
-  // Snapshot card positions when drag starts
   const snapshotRects = useCallback(() => {
     cardRects.current.clear();
     if (!listRef.current) return;
@@ -94,7 +82,6 @@ export function Sidebar() {
     });
   }, []);
 
-  // Find which card the pointer Y is over
   const findTargetId = useCallback((clientY: number): string | null => {
     for (const [id, rect] of cardRects.current) {
       if (clientY >= rect.top && clientY <= rect.bottom) {
@@ -143,7 +130,6 @@ export function Sidebar() {
       setDragId(null);
       setDragOverId(null);
 
-      // Keep didDragRef true through the click event, then reset
       requestAnimationFrame(() => {
         didDragRef.current = false;
       });
@@ -182,44 +168,20 @@ export function Sidebar() {
           }}
           data-tauri-drag-region
         >
-          <span style={{ fontSize: 14, fontWeight: 700, color: theme.textPrimary, letterSpacing: "-0.02em", fontFamily: theme.fontHeading }}>
-            CC-Manager
-          </span>
-          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <button
-              onClick={toggleTheme}
-              title={themeMode === "light" ? "Switch to dark mode" : "Switch to light mode"}
-              style={{
-                background: "none",
-                border: "none",
-                cursor: "pointer",
-                color: theme.textMuted,
-                padding: 3,
-                display: "flex",
-                borderRadius: 4,
-                transition: "color 0.15s",
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.color = theme.lavender)}
-              onMouseLeave={(e) => (e.currentTarget.style.color = theme.textMuted)}
-            >
-              {themeMode === "light" ? <Moon size={14} /> : <Sun size={14} />}
-            </button>
-            {attentionCount > 0 && (
-              <span
-                style={{
-                  background: theme.peach,
-                  color: "white",
-                  fontSize: 11,
-                  fontWeight: 700,
-                  padding: "2px 8px",
-                  borderRadius: 12,
-                  fontFamily: theme.fontHeading,
-                }}
-              >
-                {attentionCount} need attention
-              </span>
-            )}
+          <div style={{ display: "flex", flexDirection: "column" }}>
+            <span style={{ fontSize: 14, fontWeight: 700, color: theme.textPrimary, letterSpacing: "-0.02em", fontFamily: theme.fontHeading }}>
+              Maestro
+            </span>
+            <span style={{ fontSize: 9, color: theme.textMuted, letterSpacing: "0.05em", fontFamily: theme.fontHeading }}>
+              conduct your opus
+            </span>
           </div>
+          <IconButton
+            icon={themeMode === "light" ? <Moon size={14} /> : <Sun size={14} />}
+            tooltip={themeMode === "light" ? "Switch to dark mode" : "Switch to light mode"}
+            onClick={toggleTheme}
+            hoverColor={theme.lavender}
+          />
         </div>
 
         <SidebarFilters />
@@ -255,40 +217,6 @@ export function Sidebar() {
             </div>
           )}
 
-          {archivedAgents.length > 0 && (
-            <button
-              onClick={() => setShowArchived(!showArchived)}
-              style={{
-                background: "none",
-                border: "none",
-                cursor: "pointer",
-                color: theme.textMuted,
-                fontSize: 11,
-                fontWeight: 600,
-                padding: "8px 4px 4px",
-                display: "flex",
-                alignItems: "center",
-                gap: 4,
-                textAlign: "left",
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.color = theme.textSecondary)}
-              onMouseLeave={(e) => (e.currentTarget.style.color = theme.textMuted)}
-            >
-              <Archive size={11} />
-              {showArchived ? "Hide" : "Show"} {archivedAgents.length} archived
-            </button>
-          )}
-
-          {showArchived &&
-            filteredArchived.map((agent) => (
-              <AgentCard
-                key={agent.id}
-                agent={agent}
-                selected={selectedAgentId === agent.id}
-                needsAttention={!!attentionSet[agent.id]}
-                isArchived
-              />
-            ))}
         </div>
 
         <div style={{ padding: "8px 8px 12px" }}>

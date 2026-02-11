@@ -1,8 +1,8 @@
 {
   "$schema": "https://raw.githubusercontent.com/nicedoc/schemas/master/tauri/tauri.conf.v2.json",
-  "productName": "CC-Manager",
+  "productName": "Maestro",
   "version": "0.1.0",
-  "identifier": "com.ccmanager.app",
+  "identifier": "com.maestro.app",
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "CC-Manager",
+        "title": "Maestro",
         "width": 1200,
         "height": 800,
         "minWidth": 900,

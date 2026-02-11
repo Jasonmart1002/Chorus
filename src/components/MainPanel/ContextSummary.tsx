@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState } from "react";
 import { Cpu, RotateCw, Folder, Play, Loader, GitBranch, ChevronDown, TerminalSquare } from "lucide-react";
 import type { Agent } from "../../types/agent";
 import { STATUS_COLORS, STATUS_LABELS } from "../../lib/constants";
@@ -7,6 +7,9 @@ import { useSidebarStore } from "../../store/sidebarStore";
 import { useThemeStore } from "../../store/themeStore";
 import { getDisplayName } from "../../lib/sortAgents";
 import { RunDialog } from "../RunDialog";
+import { IconButton } from "../ui/IconButton";
+import { Badge } from "../ui/Badge";
+import { DropdownMenu, DropdownMenuItem } from "../ui/DropdownMenu";
 
 const GIT_ACTIONS = [
   {
@@ -36,30 +39,20 @@ interface Props {
 }
 
 export function ContextSummary({ agent }: Props) {
-  const statusColor = STATUS_COLORS[agent.status] || "#B8B8B8";
   const prefs = useSidebarStore((s) => s.getPrefs(agent.id));
   const theme = useThemeStore((s) => s.current);
+  const statusColor = STATUS_COLORS[agent.status] || theme.textMuted;
   const displayName = getDisplayName(agent, prefs);
   const [showRun, setShowRun] = useState(false);
   const [showGitMenu, setShowGitMenu] = useState(false);
+  const [showTermMenu, setShowTermMenu] = useState(false);
   const commandState = useAgentStore((s) => s.commandStates[agent.config.cwd]);
   const sendPrompt = useAgentStore((s) => s.sendPrompt);
   const openTerminal = useAgentStore((s) => s.openTerminal);
   const openClaudeTerminal = useAgentStore((s) => s.openClaudeTerminal);
   const isRunning = commandState?.running === true;
-  const gitMenuRef = useRef<HTMLDivElement>(null);
 
   const canSend = agent.status === "awaiting_input" || agent.status === "idle";
-
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (gitMenuRef.current && !gitMenuRef.current.contains(e.target as Node)) {
-        setShowGitMenu(false);
-      }
-    };
-    if (showGitMenu) document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [showGitMenu]);
 
   const handleGitAction = async (prompt: string) => {
     setShowGitMenu(false);
@@ -75,7 +68,7 @@ export function ContextSummary({ agent }: Props) {
     <>
       <div
         style={{
-          padding: "10px 20px",
+          padding: "8px 20px",
           borderBottom: `1px solid ${theme.borderColor}`,
           display: "flex",
           alignItems: "center",
@@ -86,16 +79,9 @@ export function ContextSummary({ agent }: Props) {
           flexWrap: "wrap",
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <div
-            style={{
-              width: 8,
-              height: 8,
-              borderRadius: "50%",
-              background: statusColor,
-            }}
-          />
-          <span style={{ fontWeight: 600, color: theme.textPrimary, fontSize: 14, fontFamily: theme.fontHeading }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <Badge variant="status" color={statusColor} />
+          <span style={{ fontWeight: 600, color: theme.textPrimary, fontSize: 14 }}>
             {displayName}
           </span>
           <span style={{ color: theme.textMuted }}>&middot;</span>
@@ -123,164 +109,83 @@ export function ContextSummary({ agent }: Props) {
           </div>
         )}
 
-        <div style={{ marginLeft: "auto", display: "flex", gap: 6 }}>
-          <HeaderBtn
-            onClick={() => openTerminal(agent.config.cwd)}
-            title="Open terminal at project directory"
-            color={theme.textSecondary}
-            bgBase="rgba(180, 180, 180, 0.1)"
-            bgHover="rgba(180, 180, 180, 0.2)"
-            theme={theme}
+        <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
+          <DropdownMenu
+            trigger={
+              <IconButton
+                icon={<><TerminalSquare size={11} /><span style={{ fontSize: 11, fontWeight: 600 }}>Terminal</span><ChevronDown size={9} /></>}
+                tooltip="Open terminal"
+                onClick={() => setShowTermMenu(!showTermMenu)}
+                variant="tinted"
+                tintColor={theme.textSecondary}
+                size="md"
+                style={{ width: "auto", padding: "4px 12px", gap: 4 }}
+              />
+            }
+            open={showTermMenu}
+            onOpenChange={setShowTermMenu}
+            align="end"
           >
-            <TerminalSquare size={11} />
-            Terminal
-          </HeaderBtn>
-
-          <HeaderBtn
-            onClick={() => openClaudeTerminal(agent.config.cwd, agent.session_id)}
-            title="Open Claude Code CLI with this session"
-            color="#C8A951"
-            bgBase={`${theme.butter}33`}
-            bgHover={`${theme.butter}55`}
-            theme={theme}
-          >
-            <TerminalSquare size={11} />
-            Claude CLI
-          </HeaderBtn>
-
-          <div style={{ position: "relative" }} ref={gitMenuRef}>
-            <HeaderBtn
-              onClick={() => setShowGitMenu(!showGitMenu)}
-              title="Git actions"
-              color={theme.peach}
-              bgBase={`${theme.peach}22`}
-              bgHover={`${theme.peach}44`}
-              disabled={!canSend}
-              theme={theme}
+            <DropdownMenuItem
+              onClick={() => { setShowTermMenu(false); openTerminal(agent.config.cwd); }}
+              icon={<TerminalSquare size={12} />}
             >
-              <GitBranch size={11} />
-              Git
-              <ChevronDown size={9} />
-            </HeaderBtn>
+              Open Terminal
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => { setShowTermMenu(false); openClaudeTerminal(agent.config.cwd, agent.session_id); }}
+              icon={<TerminalSquare size={12} />}
+            >
+              Open Claude CLI
+            </DropdownMenuItem>
+          </DropdownMenu>
 
-            {showGitMenu && (
-              <div
-                style={{
-                  position: "absolute",
-                  top: "100%",
-                  right: 0,
-                  marginTop: 4,
-                  background: theme.bgCard,
-                  border: `1px solid ${theme.borderColor}`,
-                  borderRadius: 8,
-                  padding: 4,
-                  minWidth: 200,
-                  boxShadow: theme.shadowDialog,
-                  zIndex: 50,
-                }}
-              >
-                {GIT_ACTIONS.map((action) => (
-                  <button
-                    key={action.label}
-                    onClick={() => handleGitAction(action.prompt)}
-                    style={{
-                      width: "100%",
-                      padding: "8px 10px",
-                      background: "transparent",
-                      border: "none",
-                      borderRadius: 5,
-                      cursor: "pointer",
-                      textAlign: "left",
-                      fontSize: 12,
-                      color: theme.textPrimary,
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 8,
-                    }}
-                    onMouseEnter={(e) => (e.currentTarget.style.background = theme.lavenderLight)}
-                    onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
-                  >
-                    {action.label}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <HeaderBtn
-            onClick={() => setShowRun(true)}
-            title="Run command"
-            color={isRunning ? theme.lavender : theme.mint}
-            bgBase={isRunning ? `${theme.lavender}22` : `${theme.mint}22`}
-            bgHover={isRunning ? `${theme.lavender}44` : `${theme.mint}44`}
-            theme={theme}
+          <DropdownMenu
+            trigger={
+              <IconButton
+                icon={<><GitBranch size={11} /><span style={{ fontSize: 11, fontWeight: 600 }}>Git</span><ChevronDown size={9} /></>}
+                tooltip="Git actions"
+                onClick={() => setShowGitMenu(!showGitMenu)}
+                variant="tinted"
+                tintColor={theme.peach}
+                disabled={!canSend}
+                size="md"
+                style={{ width: "auto", padding: "4px 12px", gap: 4 }}
+              />
+            }
+            open={showGitMenu}
+            onOpenChange={setShowGitMenu}
+            align="end"
           >
-            {isRunning ? (
-              <>
-                <Loader size={11} style={{ animation: "spin 1s linear infinite" }} />
-                Running
-              </>
-            ) : (
-              <>
-                <Play size={11} />
-                Run
-              </>
-            )}
-          </HeaderBtn>
+            {GIT_ACTIONS.map((action) => (
+              <DropdownMenuItem
+                key={action.label}
+                onClick={() => handleGitAction(action.prompt)}
+              >
+                {action.label}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenu>
+
+          <IconButton
+            icon={
+              isRunning ? (
+                <><Loader size={11} style={{ animation: "spin 1s linear infinite" }} /><span style={{ fontSize: 11, fontWeight: 600 }}>Running</span></>
+              ) : (
+                <><Play size={11} /><span style={{ fontSize: 11, fontWeight: 600 }}>Run</span></>
+              )
+            }
+            tooltip="Run command"
+            onClick={() => setShowRun(true)}
+            variant="tinted"
+            tintColor={isRunning ? theme.lavender : theme.mint}
+            size="md"
+            style={{ width: "auto", padding: "4px 12px", gap: 4 }}
+          />
         </div>
       </div>
 
       {showRun && <RunDialog cwd={agent.config.cwd} onClose={() => setShowRun(false)} />}
     </>
-  );
-}
-
-function HeaderBtn({
-  children,
-  onClick,
-  title,
-  color,
-  bgBase,
-  bgHover,
-  disabled,
-  theme,
-}: {
-  children: React.ReactNode;
-  onClick: () => void;
-  title: string;
-  color: string;
-  bgBase: string;
-  bgHover: string;
-  disabled?: boolean;
-  theme: import("../../lib/theme").ThemeColors;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      title={title}
-      disabled={disabled}
-      style={{
-        padding: "4px 10px",
-        background: bgBase,
-        border: `1px solid ${color}33`,
-        borderRadius: 6,
-        color: disabled ? theme.textMuted : color,
-        cursor: disabled ? "not-allowed" : "pointer",
-        fontSize: 11,
-        fontWeight: 600,
-        display: "flex",
-        alignItems: "center",
-        gap: 4,
-        opacity: disabled ? 0.5 : 1,
-      }}
-      onMouseEnter={(e) => {
-        if (!disabled) e.currentTarget.style.background = bgHover;
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.background = bgBase;
-      }}
-    >
-      {children}
-    </button>
   );
 }

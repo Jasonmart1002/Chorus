@@ -1,9 +1,13 @@
-import { useState, useEffect, useRef } from "react";
+import { useState } from "react";
 import { open } from "@tauri-apps/plugin-dialog";
 import { FolderOpen } from "lucide-react";
 import { useAgentStore } from "../store/agentStore";
 import { useThemeStore } from "../store/themeStore";
 import { DEFAULT_PERMISSION_MODE } from "../lib/constants";
+import { Dialog } from "./ui/Dialog";
+import { Button } from "./ui/Button";
+import { Input } from "./ui/Input";
+import { IconButton } from "./ui/IconButton";
 
 interface Props {
   onClose: () => void;
@@ -17,11 +21,6 @@ export function NewAgentDialog({ onClose }: Props) {
   const [permMode, setPermMode] = useState(DEFAULT_PERMISSION_MODE);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const nameRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    nameRef.current?.focus();
-  }, []);
 
   const handlePickDir = async () => {
     const selected = await open({ directory: true, multiple: false });
@@ -48,109 +47,66 @@ export function NewAgentDialog({ onClose }: Props) {
     }
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Escape") onClose();
-    if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) handleCreate();
-  };
+  const isReady = !!(name.trim() && cwd.trim() && !creating);
 
   return (
-    <div
-      style={{
-        position: "fixed",
-        inset: 0,
-        background: "rgba(74, 74, 74, 0.4)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        zIndex: 100,
-      }}
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
-      onKeyDown={handleKeyDown}
+    <Dialog
+      open={true}
+      onClose={onClose}
+      title="New Agent"
+      footer={
+        <>
+          <Button variant="secondary" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button
+            variant="primary"
+            onClick={handleCreate}
+            disabled={!isReady}
+            loading={creating}
+          >
+            Create Agent
+          </Button>
+        </>
+      }
     >
-      <div
-        style={{
-          background: theme.bgCard,
-          borderRadius: 12,
-          padding: 24,
-          width: 420,
-          maxWidth: "90vw",
-          boxShadow: theme.shadowDialog,
-          border: `1px solid ${theme.mauve}`,
-          animation: "springIn 0.25s ease-out",
-        }}
-      >
-        <h2 style={{ margin: "0 0 20px", fontSize: 18, fontWeight: 700, color: theme.textPrimary, fontFamily: theme.fontHeading }}>
-          New Agent
-        </h2>
-
-        <label style={{ display: "block", marginBottom: 12 }}>
-          <span style={{ fontSize: 12, color: theme.textSecondary, display: "block", marginBottom: 4 }}>Name</span>
-          <input
-            ref={nameRef}
+      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        <label style={{ display: "block" }}>
+          <span style={{ fontSize: 12, color: theme.textSecondary, display: "block", marginBottom: 4 }}>
+            Name
+          </span>
+          <Input
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="my-project"
-            style={{
-              width: "100%",
-              padding: "8px 12px",
-              background: theme.bgBase,
-              border: `1px solid ${theme.mauve}`,
-              borderRadius: 6,
-              color: theme.textPrimary,
-              fontSize: 14,
-              outline: "none",
-              boxSizing: "border-box",
-              transition: "border-color 0.15s",
-            }}
-            onFocus={(e) => (e.currentTarget.style.borderColor = theme.lavender)}
-            onBlur={(e) => (e.currentTarget.style.borderColor = theme.mauve)}
+            autoFocus
           />
         </label>
 
-        <label style={{ display: "block", marginBottom: 12 }}>
+        <label style={{ display: "block" }}>
           <span style={{ fontSize: 12, color: theme.textSecondary, display: "block", marginBottom: 4 }}>
             Working Directory
           </span>
           <div style={{ display: "flex", gap: 8 }}>
-            <input
-              value={cwd}
-              onChange={(e) => setCwd(e.target.value)}
-              placeholder="/path/to/project"
-              style={{
-                flex: 1,
-                padding: "8px 12px",
-                background: theme.bgBase,
-                border: `1px solid ${theme.mauve}`,
-                borderRadius: 6,
-                color: theme.textPrimary,
-                fontSize: 14,
-                outline: "none",
-                transition: "border-color 0.15s",
-              }}
-              onFocus={(e) => (e.currentTarget.style.borderColor = theme.lavender)}
-              onBlur={(e) => (e.currentTarget.style.borderColor = theme.mauve)}
-            />
-            <button
+            <div style={{ flex: 1 }}>
+              <Input
+                value={cwd}
+                onChange={(e) => setCwd(e.target.value)}
+                placeholder="/path/to/project"
+              />
+            </div>
+            <IconButton
+              icon={<FolderOpen size={16} />}
+              tooltip="Browse"
               onClick={handlePickDir}
-              style={{
-                padding: "8px 12px",
-                background: theme.bgSurface,
-                border: `1px solid ${theme.mauve}`,
-                borderRadius: 6,
-                color: theme.textPrimary,
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-              }}
-            >
-              <FolderOpen size={16} />
-            </button>
+              variant="tinted"
+              tintColor={theme.lavender}
+              size="md"
+            />
           </div>
         </label>
 
-        <label style={{ display: "block", marginBottom: 20 }}>
+        <label style={{ display: "block" }}>
           <span style={{ fontSize: 12, color: theme.textSecondary, display: "block", marginBottom: 4 }}>
             Permission Mode
           </span>
@@ -162,7 +118,7 @@ export function NewAgentDialog({ onClose }: Props) {
               padding: "8px 12px",
               background: theme.bgBase,
               border: `1px solid ${theme.mauve}`,
-              borderRadius: 6,
+              borderRadius: 8,
               color: theme.textPrimary,
               fontSize: 14,
               outline: "none",
@@ -179,52 +135,16 @@ export function NewAgentDialog({ onClose }: Props) {
               padding: "8px 12px",
               background: theme.peachLight,
               border: `1px solid ${theme.peach}`,
-              borderRadius: 6,
+              borderRadius: 8,
               color: theme.textPrimary,
               fontSize: 12,
-              marginBottom: 12,
               wordBreak: "break-word",
             }}
           >
             {error}
           </div>
         )}
-
-        <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
-          <button
-            onClick={onClose}
-            style={{
-              padding: "8px 16px",
-              background: "transparent",
-              border: `1px solid ${theme.borderColor}`,
-              borderRadius: 6,
-              color: theme.textSecondary,
-              cursor: "pointer",
-              fontSize: 13,
-            }}
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleCreate}
-            disabled={!name.trim() || !cwd.trim() || creating}
-            style={{
-              padding: "8px 16px",
-              background: name.trim() && cwd.trim() && !creating ? theme.lavender : theme.borderColor,
-              border: "none",
-              borderRadius: 6,
-              color: "white",
-              cursor: name.trim() && cwd.trim() && !creating ? "pointer" : "not-allowed",
-              fontSize: 13,
-              fontWeight: 600,
-              boxShadow: name.trim() && cwd.trim() && !creating ? theme.shadowChunky : undefined,
-              fontFamily: theme.fontHeading,
-            }}
-          >
-            {creating ? "Creating..." : "Create Agent"}
-          </button>
-        </div>
       </div>
-    </div>
+    </Dialog>
   );
 }
