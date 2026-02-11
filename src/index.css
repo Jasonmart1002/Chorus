@@ -1,0 +1,93 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Scrollbar styling — light (default) */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #B8A4C8;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #8B6BAA;
+}
+
+/* Scrollbar — dark */
+body.theme-dark ::-webkit-scrollbar-thumb {
+  background: #5E4E72;
+}
+body.theme-dark ::-webkit-scrollbar-thumb:hover {
+  background: #B898D4;
+}
+
+/* Selection — light (default) */
+::selection {
+  background: rgba(139, 107, 170, 0.4);
+}
+
+/* Selection — dark */
+body.theme-dark ::selection {
+  background: rgba(184, 152, 212, 0.35);
+}
+
+/* Pulse animation for working status */
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* Spin animation for loaders */
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Spring in animation */
+@keyframes springIn {
+  0% { transform: scale(0.9); opacity: 0; }
+  70% { transform: scale(1.03); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+/* Slide down animation */
+@keyframes slideDown {
+  0% { transform: translateY(-8px); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+
+/* Attention pulse */
+@keyframes attentionPulse {
+  0%, 100% { box-shadow: 0 0 0 0 currentColor; }
+  50% { box-shadow: 0 0 0 4px currentColor; }
+}
+
+/* Input/textarea focus */
+textarea:focus, input:focus, select:focus {
+  outline: none;
+}
+
+/* Prevent text selection on drag regions */
+[data-tauri-drag-region] {
+  -webkit-user-select: none;
+  user-select: none;
+}
