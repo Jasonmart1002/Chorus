@@ -1,4 +1,5 @@
 import { useRef, useEffect } from "react";
+import { useThemeStore } from "../../store/themeStore";
 import { Dialog } from "./Dialog";
 import { Button } from "./Button";
 
@@ -21,6 +22,7 @@ export function ConfirmDialog({
   confirmLabel = "Confirm",
   variant = "default",
 }: ConfirmDialogProps) {
+  const theme = useThemeStore((s) => s.current);
   const cancelRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
@@ -52,7 +54,16 @@ export function ConfirmDialog({
         </>
       }
     >
-      <p style={{ margin: 0, fontSize: 13, lineHeight: 1.5 }}>
+      <p
+        style={{
+          margin: 0,
+          fontSize: 13,
+          lineHeight: 1.6,
+          color: theme.textSecondary,
+          fontFamily: theme.fontBody,
+          fontWeight: 600,
+        }}
+      >
         {description}
       </p>
     </Dialog>

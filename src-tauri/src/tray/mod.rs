@@ -7,13 +7,13 @@ use tauri::{
 };
 
 pub fn setup_tray(app: &App) -> Result<(), Box<dyn std::error::Error>> {
-    let show = MenuItem::with_id(app, "show", "Show Cadenza", true, None::<&str>)?;
+    let show = MenuItem::with_id(app, "show", "Show Chorus", true, None::<&str>)?;
     let quit = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
     let menu = Menu::with_items(app, &[&show, &quit])?;
 
     let _tray = TrayIconBuilder::new()
         .menu(&menu)
-        .tooltip("Cadenza")
+        .tooltip("Chorus")
         .on_menu_event(|app, event| match event.id.as_ref() {
             "show" => {
                 if let Some(window) = app.get_webview_window("main") {

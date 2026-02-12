@@ -7,7 +7,7 @@ import diff from "react-syntax-highlighter/dist/esm/languages/prism/diff";
 import { useThemeStore } from "../store/themeStore";
 import { Dialog } from "./ui/Dialog";
 import { Button } from "./ui/Button";
-import type { ThemeColors } from "../lib/theme";
+import { CODE_BG, CODE_MANTLE, CODE_BORDER, CODE_TEXT, CODE_SUBTEXT, buildCodeSyntaxTheme } from "../lib/codeTheme";
 
 SyntaxHighlighter.registerLanguage("diff", diff);
 
@@ -22,35 +22,6 @@ interface Props {
   onClose: () => void;
 }
 
-function buildDiffTheme(theme: ThemeColors): Record<string, React.CSSProperties> {
-  return {
-    'code[class*="language-"]': {
-      color: theme.textPrimary,
-      fontFamily: theme.fontCode,
-      fontSize: "11px",
-      lineHeight: "1.6",
-    },
-    'pre[class*="language-"]': {
-      color: theme.textPrimary,
-      fontFamily: theme.fontCode,
-      fontSize: "11px",
-      lineHeight: "1.6",
-      margin: 0,
-      padding: "12px",
-      overflow: "auto",
-      background: theme.bgBase,
-    },
-    comment: { color: theme.textMuted },
-    punctuation: { color: theme.lavender },
-    inserted: { color: theme.mint },
-    deleted: { color: theme.peach },
-    "attr-name": { color: theme.butter },
-    string: { color: theme.mint },
-    keyword: { color: theme.lavender },
-    important: { color: theme.peach, fontWeight: "bold" },
-  };
-}
-
 export function DiffDialog({ cwd, onClose }: Props) {
   const theme = useThemeStore((s) => s.current);
   const [diffType, setDiffType] = useState("unstaged");
@@ -60,7 +31,18 @@ export function DiffDialog({ cwd, onClose }: Props) {
   const outputRef = useRef<HTMLDivElement>(null);
   const runIdRef = useRef(0);
 
-  const syntaxTheme = buildDiffTheme(theme);
+  const syntaxTheme = buildCodeSyntaxTheme(theme.fontCode);
+  // Override font size for diff view
+  syntaxTheme['code[class*="language-"]'] = {
+    ...syntaxTheme['code[class*="language-"]'],
+    fontSize: "11px",
+    lineHeight: "1.6",
+  };
+  syntaxTheme['pre[class*="language-"]'] = {
+    ...syntaxTheme['pre[class*="language-"]'],
+    fontSize: "11px",
+    lineHeight: "1.6",
+  };
 
   const runDiff = (type: string) => {
     const config = DIFF_TYPES.find((d) => d.key === type);
@@ -137,6 +119,17 @@ export function DiffDialog({ cwd, onClose }: Props) {
   const diffText = lines.join("\n");
   const dirName = cwd.split("/").pop() || cwd;
 
+  // Status bar color
+  const statusColor = running
+    ? theme.pink
+    : isDone && exitCode === 0 && lines.length === 0
+    ? CODE_SUBTEXT
+    : isDone && exitCode === 0
+    ? "#a6e3a1"  // Mocha Green
+    : isDone
+    ? "#f38ba8"  // Mocha Red
+    : CODE_SUBTEXT;
+
   return (
     <Dialog
       open={true}
@@ -151,7 +144,7 @@ export function DiffDialog({ cwd, onClose }: Props) {
           </Button>
           <Button
             variant="primary"
-            color={theme.lavender}
+            color={theme.pink}
             onClick={() => runDiff(diffType)}
             disabled={running}
             icon={<RefreshCw size={14} />}
@@ -162,21 +155,21 @@ export function DiffDialog({ cwd, onClose }: Props) {
       }
     >
       {/* Diff type tabs */}
-      <div style={{ display: "flex", gap: 4, marginBottom: 12 }}>
+      <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
         {DIFF_TYPES.map((dt) => (
           <button
             key={dt.key}
             onClick={() => handleTypeChange(dt.key)}
             disabled={running}
             style={{
-              padding: "4px 12px",
+              padding: "5px 14px",
               fontSize: 11,
-              fontWeight: diffType === dt.key ? 600 : 400,
+              fontWeight: diffType === dt.key ? 700 : 400,
               fontFamily: theme.fontCode,
-              background: diffType === dt.key ? theme.lavenderLight : "transparent",
-              color: diffType === dt.key ? theme.lavender : theme.textSecondary,
-              border: `1px solid ${diffType === dt.key ? theme.lavender : theme.borderColor}`,
-              borderRadius: 6,
+              background: diffType === dt.key ? theme.pinkLight : "transparent",
+              color: diffType === dt.key ? theme.pink : theme.textSecondary,
+              border: `2px solid ${diffType === dt.key ? theme.pink : theme.borderColor}`,
+              borderRadius: theme.borderRadiusSm,
               cursor: running ? "not-allowed" : "pointer",
               opacity: running ? 0.5 : 1,
               transition: "all 0.15s ease",
@@ -190,9 +183,9 @@ export function DiffDialog({ cwd, onClose }: Props) {
       {/* Output container */}
       <div
         style={{
-          background: theme.bgBase,
-          borderRadius: 8,
-          border: `1px solid ${running ? theme.lavender : theme.borderColor}`,
+          background: CODE_BG,
+          borderRadius: theme.borderRadiusSm,
+          border: `2px solid ${running ? theme.pink : CODE_BORDER}`,
           overflow: "hidden",
         }}
       >
@@ -200,21 +193,15 @@ export function DiffDialog({ cwd, onClose }: Props) {
         <div
           style={{
             padding: "6px 12px",
-            borderBottom: `1px solid ${theme.borderColor}`,
+            borderBottom: `1px solid ${CODE_BORDER}`,
+            background: CODE_MANTLE,
             fontSize: 11,
             fontWeight: 600,
+            fontFamily: theme.fontBody,
             display: "flex",
             alignItems: "center",
             gap: 8,
-            color: running
-              ? theme.lavender
-              : isDone && exitCode === 0 && lines.length === 0
-              ? theme.textMuted
-              : isDone && exitCode === 0
-              ? theme.mint
-              : isDone
-              ? theme.peach
-              : theme.textMuted,
+            color: statusColor,
           }}
         >
           {running && (
@@ -255,7 +242,7 @@ export function DiffDialog({ cwd, onClose }: Props) {
                 padding: "12px",
                 margin: 0,
                 fontSize: 11,
-                color: theme.textMuted,
+                color: CODE_SUBTEXT,
                 fontFamily: theme.fontCode,
               }}
             >

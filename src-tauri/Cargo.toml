@@ -1,14 +1,17 @@
 [package]
-name = "cadenza"
+name = "chorus"
 version = "0.1.0"
 edition = "2021"
+description = "Multi-agent Claude Code manager"
+license = "MIT"
+repository = "https://github.com/Jasonmart1002/CC-Manager"
 
 [lib]
-name = "cadenza_lib"
+name = "chorus_lib"
 crate-type = ["lib", "cdylib", "staticlib"]
 
 [[bin]]
-name = "cadenza"
+name = "chorus"
 path = "src/main.rs"
 
 [dependencies]

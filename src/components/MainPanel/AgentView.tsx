@@ -18,7 +18,7 @@ export function AgentView({ agentId }: Props) {
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
       <ContextSummary agent={agent} />
-      <MessageStream messages={messages} agentId={agentId} />
+      <MessageStream key={agentId} messages={messages} agentId={agentId} />
       <PromptInput agentId={agentId} disabled={!canSend} />
     </div>
   );

@@ -34,18 +34,18 @@ export class ErrorBoundary extends React.Component<Props, State> {
             alignItems: "center",
             justifyContent: "center",
             background: "#1e1e2e",
-            fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+            fontFamily: "'Nunito', sans-serif",
           }}
         >
           <div
             style={{
               background: "#313244",
-              borderRadius: 12,
+              borderRadius: 16,
               padding: 32,
               maxWidth: 480,
               width: "90vw",
               border: "1px solid #fab387",
-              boxShadow: "4px 6px 0 rgba(0,0,0,0.6)",
+              boxShadow: "4px 6px 0 #11111b",
               textAlign: "center",
             }}
           >
@@ -54,12 +54,13 @@ export class ErrorBoundary extends React.Component<Props, State> {
                 width: 48,
                 height: 48,
                 borderRadius: "50%",
-                background: "#383039",
+                background: "#45475a",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
                 margin: "0 auto 16px",
                 fontSize: 24,
+                color: "#f38ba8",
               }}
             >
               !
@@ -70,7 +71,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
                 fontSize: 18,
                 fontWeight: 700,
                 color: "#cdd6f4",
-                fontFamily: "'Space Mono', monospace",
+                fontFamily: "'Space Grotesk', sans-serif",
               }}
             >
               Something went wrong
@@ -81,6 +82,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
                 fontSize: 13,
                 color: "#bac2de",
                 lineHeight: 1.5,
+                fontFamily: "'Nunito', sans-serif",
               }}
             >
               {this.state.error?.message || "An unexpected error occurred."}
@@ -91,12 +93,12 @@ export class ErrorBoundary extends React.Component<Props, State> {
                 padding: "8px 24px",
                 background: "#fab387",
                 border: "none",
-                borderRadius: 8,
+                borderRadius: 10,
                 color: "#1e1e2e",
                 fontSize: 13,
                 fontWeight: 600,
                 cursor: "pointer",
-                fontFamily: "'Space Mono', monospace",
+                fontFamily: "'Space Grotesk', sans-serif",
               }}
             >
               Reload

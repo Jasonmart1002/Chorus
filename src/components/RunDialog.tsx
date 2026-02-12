@@ -133,7 +133,7 @@ export function RunDialog({ cwd, onClose }: Props) {
         {/* Command input */}
         <label style={{ display: "block" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-            <span style={{ fontSize: 12, color: theme.textSecondary }}>Command</span>
+            <span style={{ fontSize: 12, fontWeight: 600, fontFamily: theme.fontBody, color: theme.textSecondary }}>Command</span>
             <DropdownMenu
               trigger={
                 <Button
@@ -141,7 +141,7 @@ export function RunDialog({ cwd, onClose }: Props) {
                   size="sm"
                   onClick={() => setShowPresets(!showPresets)}
                   icon={<Settings size={10} />}
-                  style={{ color: theme.lavender, fontSize: 11, padding: "2px 8px" }}
+                  style={{ color: theme.pink, fontSize: 11, padding: "2px 8px" }}
                 >
                   Presets
                   <ChevronDown size={10} />
@@ -190,9 +190,11 @@ export function RunDialog({ cwd, onClose }: Props) {
             style={{
               background: "none",
               border: "none",
-              color: theme.lavender,
+              color: theme.pink,
               cursor: "pointer",
               fontSize: 11,
+              fontFamily: theme.fontBody,
+              fontWeight: 600,
               display: "flex",
               alignItems: "center",
               gap: 4,
@@ -241,6 +243,7 @@ export function RunDialog({ cwd, onClose }: Props) {
                   color: theme.textMuted,
                   cursor: "pointer",
                   fontSize: 11,
+                  fontFamily: theme.fontBody,
                   padding: "2px 0",
                   alignSelf: "flex-start",
                 }}
@@ -256,14 +259,14 @@ export function RunDialog({ cwd, onClose }: Props) {
           <div
             style={{
               background: theme.bgBase,
-              borderRadius: 8,
-              border: `1px solid ${
+              borderRadius: theme.borderRadiusSm,
+              border: `2px solid ${
                 isRunning
-                  ? theme.lavender
+                  ? theme.pink
                   : exitCode === 0
                   ? theme.borderColor
                   : exitCode === null
-                  ? theme.butter
+                  ? theme.gold
                   : theme.peach
               }`,
               overflow: "hidden",
@@ -275,15 +278,16 @@ export function RunDialog({ cwd, onClose }: Props) {
                 borderBottom: `1px solid ${theme.borderColor}`,
                 fontSize: 11,
                 fontWeight: 600,
+                fontFamily: theme.fontBody,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "space-between",
                 color: isRunning
-                  ? theme.lavender
+                  ? theme.pink
                   : exitCode === 0
                   ? theme.mint
                   : exitCode === null
-                  ? theme.butter
+                  ? theme.gold
                   : theme.peach,
               }}
             >

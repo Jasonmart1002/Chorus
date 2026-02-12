@@ -94,6 +94,7 @@ export function Dialog({
         alignItems: "center",
         justifyContent: "center",
         zIndex: 100,
+        backdropFilter: "blur(2px)",
       }}
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
@@ -103,19 +104,29 @@ export function Dialog({
       <div
         ref={panelRef}
         style={{
-          background: theme.bgCard,
-          borderRadius: 12,
+          background: theme.bgSurface,
+          borderRadius: theme.borderRadiusXl,
           width,
           maxWidth: "90vw",
           maxHeight: "85vh",
           boxShadow: theme.shadowDialog,
-          border: `1px solid ${theme.mauve}`,
+          border: `2px solid ${theme.borderStrong}`,
           display: "flex",
           flexDirection: "column",
           overflow: "hidden",
           animation: "springIn 0.25s ease-out",
         }}
       >
+        {/* Decorative pink gradient top stripe */}
+        <div
+          style={{
+            height: 4,
+            background: theme.accentGradient,
+            borderRadius: `${theme.borderRadiusXl}px ${theme.borderRadiusXl}px 0 0`,
+            flexShrink: 0,
+          }}
+        />
+
         {/* Header */}
         <div style={{ padding: "20px 24px 0" }}>
           <h2
@@ -123,22 +134,38 @@ export function Dialog({
             style={{
               margin: 0,
               fontSize: 18,
-              fontWeight: 700,
+              fontWeight: 800,
               color: theme.textPrimary,
               fontFamily: theme.fontHeading,
+              textShadow: `1px 1px 0px ${theme.borderStrong}18`,
+              letterSpacing: "-0.01em",
             }}
           >
             {title}
           </h2>
           {description && (
-            <p style={{ margin: "4px 0 0", fontSize: 12, color: theme.textMuted }}>
+            <p
+              style={{
+                margin: "6px 0 0",
+                fontSize: 12,
+                color: theme.textMuted,
+                fontFamily: theme.fontBody,
+                lineHeight: 1.5,
+              }}
+            >
               {description}
             </p>
           )}
         </div>
 
         {/* Body */}
-        <div style={{ padding: "16px 24px", overflowY: "auto", flex: 1 }}>
+        <div
+          style={{
+            padding: "16px 24px",
+            overflowY: "auto",
+            flex: 1,
+          }}
+        >
           {children}
         </div>
 
@@ -149,7 +176,8 @@ export function Dialog({
               padding: "12px 24px 20px",
               display: "flex",
               justifyContent: "flex-end",
-              gap: 8,
+              gap: 10,
+              borderTop: `1px solid ${theme.borderColor}`,
             }}
           >
             {footer}

@@ -62,6 +62,7 @@ export function Layout() {
         width: "100vw",
         height: "100vh",
         display: "flex",
+        flexDirection: "row",
         background: theme.bgBase,
         color: theme.textPrimary,
         fontFamily: theme.fontBody,
@@ -69,8 +70,8 @@ export function Layout() {
         transition: "background-color 0.3s ease, color 0.3s ease",
       }}
     >
-      <Sidebar />
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+      <Sidebar onNewAgent={() => setShowNewAgent(true)} />
+      <div style={{ flex: 1, height: "100vh", minWidth: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
         <MainPanel />
       </div>
       {showNewAgent && <NewAgentDialog onClose={() => setShowNewAgent(false)} />}

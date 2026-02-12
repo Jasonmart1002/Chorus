@@ -16,26 +16,93 @@ export function MainPanel() {
           flexDirection: "column",
           alignItems: "center",
           justifyContent: "center",
-          color: theme.textMuted,
-          gap: 12,
+          gap: 20,
+          backgroundImage: theme.dotPattern,
+          backgroundSize: "24px 24px",
+          position: "relative",
+          overflow: "hidden",
         }}
       >
-        <Bot size={48} strokeWidth={1.5} />
-        <div style={{ fontSize: 16, fontWeight: 500, fontFamily: theme.fontHeading, color: theme.textSecondary }}>
+        {/* Warm glow behind the icon */}
+        <div
+          style={{
+            position: "absolute",
+            width: 200,
+            height: 200,
+            borderRadius: theme.borderRadiusFull,
+            background: theme.accentGradient,
+            opacity: 0.12,
+            filter: "blur(60px)",
+            pointerEvents: "none",
+          }}
+        />
+
+        {/* Cute chunky icon container */}
+        <div
+          style={{
+            position: "relative",
+            width: 80,
+            height: 80,
+            borderRadius: theme.borderRadiusXl,
+            background: theme.pinkLight,
+            border: `3px solid ${theme.borderStrong}`,
+            boxShadow: theme.shadowChunky,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <Bot
+            size={40}
+            strokeWidth={2}
+            color={theme.pink}
+          />
+        </div>
+
+        {/* Heading */}
+        <div
+          style={{
+            fontSize: 22,
+            fontWeight: 700,
+            fontFamily: theme.fontHeading,
+            color: theme.textPrimary,
+            textShadow: `2px 2px 0px ${theme.pinkLight}`,
+            letterSpacing: "-0.02em",
+          }}
+        >
           No agent selected
         </div>
-        <div style={{ fontSize: 13 }}>Create a new agent or select one from the sidebar</div>
+
+        {/* Cute subtext */}
+        <div
+          style={{
+            fontSize: 14,
+            fontFamily: theme.fontBody,
+            color: theme.textSecondary,
+            textAlign: "center",
+            lineHeight: 1.6,
+            maxWidth: 320,
+          }}
+        >
+          Pick an agent from the sidebar, or create a new one ~
+        </div>
+
+        {/* Chunky kbd pill */}
         <kbd
           style={{
-            marginTop: 8,
-            padding: "4px 10px",
-            background: theme.bgBase,
-            borderRadius: 6,
-            fontSize: 12,
+            marginTop: 4,
+            padding: "6px 16px",
+            background: theme.bgCard,
+            borderRadius: theme.borderRadiusSm,
+            fontSize: 13,
+            fontWeight: 600,
             color: theme.textSecondary,
-            border: `1px solid ${theme.mauve}`,
+            border: `2px solid ${theme.borderStrong}`,
             boxShadow: theme.shadowChunky,
             fontFamily: theme.fontCode,
+            letterSpacing: "0.04em",
+            transition: `all 0.2s ${theme.easeSpring}`,
+            cursor: "default",
           }}
         >
           Cmd+N
@@ -45,7 +112,7 @@ export function MainPanel() {
   }
 
   return (
-    <div style={{ flex: 1, height: "100%", overflow: "hidden" }}>
+    <div style={{ flex: 1, height: "100%", minWidth: 0, overflow: "hidden" }}>
       <AgentView agentId={selectedAgentId} />
     </div>
   );

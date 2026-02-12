@@ -15,6 +15,7 @@ interface SidebarStore {
   statusFilter: StatusFilter;
   showArchived: boolean;
   manualOrder: string[];
+  searchOpen: boolean;
 
   togglePin: (agentId: string) => void;
   toggleArchive: (agentId: string) => void;
@@ -22,6 +23,7 @@ interface SidebarStore {
   setSearchQuery: (query: string) => void;
   setStatusFilter: (filter: StatusFilter) => void;
   setShowArchived: (show: boolean) => void;
+  setSearchOpen: (open: boolean) => void;
   removeAgentPrefs: (agentId: string) => void;
   getPrefs: (agentId: string) => AgentPrefs;
   setManualOrder: (order: string[]) => void;
@@ -38,6 +40,7 @@ export const useSidebarStore = create<SidebarStore>()(
       statusFilter: "all",
       showArchived: false,
       manualOrder: [],
+      searchOpen: false,
 
       togglePin: (agentId) =>
         set((state) => {
@@ -75,6 +78,7 @@ export const useSidebarStore = create<SidebarStore>()(
       setSearchQuery: (query) => set({ searchQuery: query }),
       setStatusFilter: (filter) => set({ statusFilter: filter }),
       setShowArchived: (show) => set({ showArchived: show }),
+      setSearchOpen: (open) => set({ searchOpen: open }),
 
       removeAgentPrefs: (agentId) =>
         set((state) => {
@@ -103,13 +107,21 @@ export const useSidebarStore = create<SidebarStore>()(
         }),
     }),
     {
-      name: "cc-sidebar-prefs",
+      name: "chorus-sidebar-prefs",
       partialize: (state) => ({
         agentPrefs: state.agentPrefs,
         showArchived: state.showArchived,
         manualOrder: state.manualOrder,
       }),
       migrate: (persisted: unknown, version: number) => {
+        // One-time migration from old key
+        const oldKey = "cc-sidebar-prefs";
+        const oldData = localStorage.getItem(oldKey);
+        if (oldData) {
+          localStorage.setItem("chorus-sidebar-prefs", oldData);
+          localStorage.removeItem(oldKey);
+        }
+
         const state = persisted as Record<string, unknown>;
         // Reset "queued" filter to "all"
         if (state.statusFilter === "queued") {

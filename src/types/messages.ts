@@ -45,7 +45,13 @@ export interface ToolResultBlock {
   content: string;
 }
 
-export type SDKMessage = SystemInitMessage | AssistantMessage | ResultMessage | Record<string, unknown>;
+export interface UserPromptMessage {
+  type: "user_prompt";
+  text: string;
+  timestamp: number;
+}
+
+export type SDKMessage = SystemInitMessage | AssistantMessage | ResultMessage | UserPromptMessage;
 
 export interface AgentMessageEvent {
   agent_id: string;

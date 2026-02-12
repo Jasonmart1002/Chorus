@@ -15,12 +15,16 @@ import {
   FolderSearch,
   ListTodo,
 } from "lucide-react";
-import type { SDKMessage, ContentBlock, ToolUseBlock } from "../../types/messages";
+import type { SDKMessage, ResultMessage, ContentBlock, ToolUseBlock } from "../../types/messages";
 import { useAgentStore } from "../../store/agentStore";
 import { useThemeStore } from "../../store/themeStore";
 import { Button } from "../ui/Button";
 import { Badge } from "../ui/Badge";
 import { MarkdownRenderer } from "../ui/MarkdownRenderer";
+
+// ---------------------------------------------------------------------------
+// Tool icon & summary maps
+// ---------------------------------------------------------------------------
 
 const TOOL_ICONS: Record<string, typeof Wrench> = {
   Read: FileText,
@@ -36,48 +40,66 @@ const TOOL_ICONS: Record<string, typeof Wrench> = {
   TaskUpdate: ListTodo,
 };
 
+const TOOL_SUMMARIES: Record<string, (input: Record<string, unknown>) => string> = {
+  Read: (input) => `${input.file_path || ""}`,
+  Edit: (input) => `${input.file_path || ""}`,
+  Write: (input) => `${input.file_path || ""}`,
+  Bash: (input) => `${(input.command as string || "").substring(0, 80)}`,
+  Glob: (input) => `${input.pattern || ""}`,
+  Grep: (input) => `${input.pattern || ""}`,
+  Task: (input) => `${input.description || ""}`,
+  TaskCreate: (input) => `${input.subject || ""}`,
+  TaskUpdate: (input) => `#${input.taskId || ""} → ${input.status || ""}`,
+  EnterPlanMode: () => "Entering plan mode",
+  WebSearch: (input) => `"${input.query || ""}"`,
+  WebFetch: (input) => `${input.url || ""}`,
+};
+
+// ---------------------------------------------------------------------------
+// Props & types
+// ---------------------------------------------------------------------------
+
 interface Props {
   messages: SDKMessage[];
   agentId: string;
-}
-
-function shouldHideMessage(msg: SDKMessage): boolean {
-  const raw = msg as Record<string, unknown>;
-  const type = raw.type as string;
-  const subtype = raw.subtype as string | undefined;
-
-  if (type === "user") return true;
-  if (type === "system" && subtype?.startsWith("hook_")) return true;
-
-  return false;
 }
 
 type RenderItem =
   | { kind: "text"; text: string }
   | { kind: "tool_use"; block: ToolUseBlock }
   | { kind: "tool_group"; name: string; blocks: ToolUseBlock[] }
-  | { kind: "result"; message: SDKMessage }
+  | { kind: "result"; message: ResultMessage }
   | { kind: "user_prompt"; text: string }
   | { kind: "system_init" }
   | { kind: "ask_user"; block: ToolUseBlock }
   | { kind: "plan"; block: ToolUseBlock };
 
+// ---------------------------------------------------------------------------
+// Message filtering & flattening
+// ---------------------------------------------------------------------------
+
+function shouldHideMessage(msg: SDKMessage): boolean {
+  if (msg.type === "system" && msg.subtype?.startsWith("hook_")) return true;
+  return false;
+}
+
 function flattenMessages(messages: SDKMessage[]): RenderItem[] {
   const items: RenderItem[] = [];
-  for (const msg of messages) {
-    const raw = msg as Record<string, unknown>;
-    const type = raw.type as string;
-    const subtype = raw.subtype as string | undefined;
+  let seenInit = false;
 
-    switch (type) {
+  for (const msg of messages) {
+    switch (msg.type) {
       case "user_prompt":
-        items.push({ kind: "user_prompt", text: raw.text as string });
+        items.push({ kind: "user_prompt", text: msg.text });
         break;
       case "system":
-        if (subtype === "init") items.push({ kind: "system_init" });
+        if (msg.subtype === "init" && !seenInit) {
+          seenInit = true;
+          items.push({ kind: "system_init" });
+        }
         break;
       case "assistant": {
-        const content = (raw.message as Record<string, unknown>)?.content as ContentBlock[] | undefined;
+        const content = msg.message?.content;
         if (content) {
           for (const block of content) {
             if (block.type === "text" && block.text.trim()) {
@@ -136,29 +158,55 @@ function groupConsecutiveToolItems(items: RenderItem[]): RenderItem[] {
   return result;
 }
 
+// ---------------------------------------------------------------------------
+// Main component
+// ---------------------------------------------------------------------------
+
 export function MessageStream({ messages, agentId }: Props) {
   const bottomRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const theme = useThemeStore((s) => s.current);
+  const prevLenRef = useRef(messages.length);
 
+  // Only auto-scroll when new messages arrive (not on initial mount from tab switch)
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (messages.length > prevLenRef.current) {
+      bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+    prevLenRef.current = messages.length;
   }, [messages.length]);
 
   const visible = messages.filter((m) => !shouldHideMessage(m));
 
+  // --- Empty state ---
   if (visible.length === 0) {
     return (
       <div
         style={{
           flex: 1,
           display: "flex",
+          flexDirection: "column",
           alignItems: "center",
           justifyContent: "center",
+          gap: 12,
           color: theme.textMuted,
-          fontSize: 14,
+          fontFamily: theme.fontBody,
+          userSelect: "none",
         }}
       >
-        Send a prompt to start the conversation
+        <span style={{ fontSize: 28, opacity: 0.5 }}>~</span>
+        <span
+          style={{
+            fontSize: 14,
+            fontFamily: theme.fontHeading,
+            letterSpacing: "0.02em",
+          }}
+        >
+          Send a prompt to start the conversation
+        </span>
+        <span style={{ fontSize: 11, opacity: 0.6 }}>
+          Your messages will appear here
+        </span>
       </div>
     );
   }
@@ -168,13 +216,15 @@ export function MessageStream({ messages, agentId }: Props) {
 
   return (
     <div
+      ref={containerRef}
       style={{
         flex: 1,
         overflowY: "auto",
-        padding: "16px 20px",
+        padding: "20px 24px",
         display: "flex",
         flexDirection: "column",
-        gap: 12,
+        gap: 14,
+        fontFamily: theme.fontBody,
       }}
     >
       {grouped.map((item, i) => (
@@ -185,109 +235,501 @@ export function MessageStream({ messages, agentId }: Props) {
   );
 }
 
-function RenderItemView({ item, agentId }: { item: RenderItem; agentId: string }) {
-  const theme = useThemeStore((s) => s.current);
+// ---------------------------------------------------------------------------
+// Item dispatcher
+// ---------------------------------------------------------------------------
 
+function RenderItemView({ item, agentId }: { item: RenderItem; agentId: string }) {
   switch (item.kind) {
     case "user_prompt":
-      return (
-        <div style={{ display: "flex", justifyContent: "flex-end" }}>
-          <div
-            style={{
-              maxWidth: "80%",
-              padding: "8px 12px",
-              borderRadius: "12px 12px 2px 12px",
-              background: theme.lavenderLight,
-              border: `1px solid ${theme.lavender}`,
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 4 }}>
-              <User size={10} color={theme.lavender} />
-              <span style={{ fontSize: 10, color: theme.lavender, fontWeight: 600 }}>You</span>
-            </div>
-            <div
-              style={{
-                fontSize: 13,
-                color: theme.textPrimary,
-                lineHeight: 1.5,
-                whiteSpace: "pre-wrap",
-                wordBreak: "break-word",
-              }}
-            >
-              {item.text}
-            </div>
-          </div>
-        </div>
-      );
-
+      return <UserPromptBubble text={item.text} />;
     case "system_init":
-      return (
-        <div style={{ display: "flex", alignItems: "center", gap: 8, color: theme.textMuted, fontSize: 12 }}>
-          <Terminal size={12} />
-          <span>Session initialized</span>
-        </div>
-      );
-
+      return <SystemInitPill />;
     case "text":
-      return <MarkdownRenderer content={item.text} />;
-
+      return <AssistantText text={item.text} />;
     case "tool_use":
       return <ToolUseView block={item.block} />;
-
     case "tool_group":
       return <ToolGroupView name={item.name} blocks={item.blocks} />;
-
     case "ask_user":
       return <AskUserQuestionView block={item.block} agentId={agentId} />;
-
     case "plan":
       return <PlanView block={item.block} agentId={agentId} />;
-
-    case "result": {
-      const raw = item.message as Record<string, unknown>;
-      const subtype = raw.subtype as string | undefined;
-      const isError = subtype !== "success";
-      const numTurns = raw.num_turns as number | undefined;
-      return (
-        <div
-          style={{
-            padding: "8px 12px",
-            borderRadius: 8,
-            background: isError ? theme.peachLight : theme.mintLight,
-            border: `1px solid ${isError ? theme.peach : theme.mint}`,
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-            fontSize: 11,
-            color: theme.textSecondary,
-          }}
-        >
-          {isError ? (
-            <AlertCircle size={12} color={theme.peach} style={{ flexShrink: 0 }} />
-          ) : (
-            <CheckCircle size={12} color={theme.mint} style={{ flexShrink: 0 }} />
-          )}
-          {isError && (
-            <span style={{ color: theme.textPrimary, fontSize: 12 }}>
-              {(raw.result as string || "").substring(0, 200)}
-            </span>
-          )}
-          <span style={{ color: theme.textSecondary }}>
-            {isError ? "Error" : "Turn complete"}
-          </span>
-          {numTurns != null && numTurns > 0 && (
-            <span>&middot; {numTurns} turns</span>
-          )}
-        </div>
-      );
-    }
-
+    case "result":
+      return <ResultView message={item.message} />;
     default:
       return null;
   }
 }
 
-// --- AskUserQuestion interactive renderer ---
+// ---------------------------------------------------------------------------
+// User Prompt Bubble — right-aligned cute speech bubble
+// ---------------------------------------------------------------------------
+
+function UserPromptBubble({ text }: { text: string }) {
+  const theme = useThemeStore((s) => s.current);
+
+  return (
+    <div style={{ display: "flex", justifyContent: "flex-end" }}>
+      <div
+        style={{
+          maxWidth: "75%",
+          padding: "10px 14px",
+          borderRadius: "16px 16px 4px 16px",
+          background: theme.pinkLight,
+          border: `2px solid ${theme.borderStrong}`,
+          boxShadow: theme.shadowChunky,
+          position: "relative",
+        }}
+      >
+        {/* "You" label */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 4,
+            marginBottom: 6,
+          }}
+        >
+          <User size={11} color={theme.pink} strokeWidth={2.5} />
+          <span
+            style={{
+              fontSize: 11,
+              color: theme.pink,
+              fontWeight: 700,
+              fontFamily: theme.fontHeading,
+              letterSpacing: "0.02em",
+            }}
+          >
+            You
+          </span>
+          <span style={{ fontSize: 10, color: theme.pink, opacity: 0.6 }}>
+            &hearts;
+          </span>
+        </div>
+
+        {/* Message text */}
+        <div
+          style={{
+            fontSize: 13,
+            color: theme.textPrimary,
+            lineHeight: 1.6,
+            whiteSpace: "pre-wrap",
+            wordBreak: "break-word",
+            fontFamily: theme.fontBody,
+          }}
+        >
+          {text}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// System Init — centered sparkle pill
+// ---------------------------------------------------------------------------
+
+function SystemInitPill() {
+  const theme = useThemeStore((s) => s.current);
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        justifyContent: "center",
+        padding: "4px 0",
+      }}
+    >
+      <div
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 6,
+          padding: "4px 14px",
+          borderRadius: theme.borderRadiusFull,
+          background: theme.bgCard,
+          border: `1px solid ${theme.borderColor}`,
+          fontSize: 11,
+          color: theme.textMuted,
+          fontFamily: theme.fontBody,
+          fontWeight: 600,
+          userSelect: "none",
+        }}
+      >
+        <span style={{ fontSize: 12 }}>&#10024;</span>
+        <span>Session started</span>
+        <span style={{ fontSize: 12 }}>&#10024;</span>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Assistant Text — cozy full-width markdown
+// ---------------------------------------------------------------------------
+
+function AssistantText({ text }: { text: string }) {
+  return (
+    <div style={{ padding: "2px 0" }}>
+      <MarkdownRenderer content={text} />
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Result Messages — success / error banners
+// ---------------------------------------------------------------------------
+
+function ResultView({ message }: { message: ResultMessage }) {
+  const theme = useThemeStore((s) => s.current);
+  const isError = message.subtype !== "success";
+  const numTurns = message.num_turns;
+
+  const bg = isError ? theme.peachLight : theme.mintLight;
+  const border = isError ? theme.peach : theme.mint;
+  const iconColor = isError ? theme.peach : theme.mint;
+
+  return (
+    <div
+      style={{
+        padding: "10px 14px",
+        borderRadius: theme.borderRadius,
+        background: bg,
+        border: `2px solid ${border}`,
+        display: "flex",
+        alignItems: "center",
+        gap: 10,
+        fontSize: 12,
+        color: theme.textSecondary,
+        fontFamily: theme.fontBody,
+      }}
+    >
+      {isError ? (
+        <AlertCircle size={14} color={iconColor} strokeWidth={2.5} style={{ flexShrink: 0 }} />
+      ) : (
+        <CheckCircle size={14} color={iconColor} strokeWidth={2.5} style={{ flexShrink: 0 }} />
+      )}
+
+      {isError && (
+        <span
+          style={{
+            color: theme.textPrimary,
+            fontSize: 12,
+            fontFamily: theme.fontBody,
+            flex: 1,
+            lineHeight: 1.4,
+          }}
+        >
+          {(message.result || "").substring(0, 300)}
+        </span>
+      )}
+
+      <span
+        style={{
+          color: theme.textSecondary,
+          fontWeight: 600,
+          fontFamily: theme.fontHeading,
+          fontSize: 11,
+          letterSpacing: "0.02em",
+          whiteSpace: "nowrap",
+        }}
+      >
+        {isError ? "Error" : "Turn complete \u2713"}
+      </span>
+
+      {numTurns != null && numTurns > 0 && (
+        <span
+          style={{
+            color: theme.textMuted,
+            fontSize: 11,
+            fontFamily: theme.fontBody,
+          }}
+        >
+          &middot; {numTurns} turn{numTurns !== 1 ? "s" : ""}
+        </span>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Tool Use — cute mini-window
+// No overflow:hidden on wrapper — border-radius applied to children directly
+// to avoid WebKit clipping bugs inside scrollable flex containers.
+// ---------------------------------------------------------------------------
+
+function ToolUseView({ block, nested }: { block: ToolUseBlock; nested?: boolean }) {
+  const [expanded, setExpanded] = useState(false);
+  const theme = useThemeStore((s) => s.current);
+  const input = (block.input || {}) as Record<string, unknown>;
+  const toolName = block.name || "Tool";
+  const summaryFn = TOOL_SUMMARIES[toolName];
+  const summary = summaryFn ? summaryFn(input) : "";
+  const Icon = TOOL_ICONS[toolName] || Wrench;
+
+  const codeBg = theme.bgBase;
+
+  const outerRadius = nested ? 0 : theme.borderRadius;
+  // When collapsed, full border-radius on title bar. When expanded, only top corners.
+  const titleRadius = nested
+    ? 0
+    : expanded
+      ? `${outerRadius}px ${outerRadius}px 0 0`
+      : outerRadius;
+  const contentRadius = nested ? 0 : `0 0 ${outerRadius}px ${outerRadius}px`;
+
+  return (
+    <div
+      style={{
+        border: nested ? undefined : `2px solid ${theme.borderStrong}`,
+        borderRadius: outerRadius,
+        boxShadow: nested ? undefined : theme.shadowChunky,
+        minWidth: 0,
+      }}
+    >
+      {/* Title bar — mini-window header */}
+      <div
+        onClick={() => setExpanded(!expanded)}
+        style={{
+          padding: "8px 12px",
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+          cursor: "pointer",
+          userSelect: "none",
+          background: theme.bgCard,
+          borderBottom: expanded ? `1px solid ${theme.borderColor}` : undefined,
+          borderTop: nested ? `1px solid ${theme.borderColor}` : undefined,
+          borderRadius: titleRadius,
+          transition: `background 0.15s ease`,
+          minHeight: 34,
+          minWidth: 0,
+        }}
+      >
+        {/* Window button dot */}
+        <span
+          style={{
+            display: "inline-block",
+            width: 8,
+            height: 8,
+            borderRadius: "50%",
+            background: theme.lavender,
+            border: `1.5px solid ${theme.borderStrong}`,
+            flexShrink: 0,
+          }}
+        />
+
+        {/* Tool icon */}
+        <Icon size={12} color={theme.lavender} strokeWidth={2.5} style={{ flexShrink: 0 }} />
+
+        {/* Tool name */}
+        <span
+          style={{
+            fontSize: 12,
+            fontWeight: 700,
+            color: theme.textPrimary,
+            fontFamily: theme.fontHeading,
+            letterSpacing: "0.01em",
+            whiteSpace: "nowrap",
+          }}
+        >
+          {toolName}
+        </span>
+
+        {/* Summary */}
+        {summary && (
+          <span
+            style={{
+              fontSize: 11,
+              color: theme.textMuted,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+              flex: 1,
+              minWidth: 0,
+              fontFamily: theme.fontCode,
+            }}
+          >
+            {summary}
+          </span>
+        )}
+
+        {/* Collapse chevron */}
+        <span style={{ flexShrink: 0, display: "flex", alignItems: "center" }}>
+          {expanded ? (
+            <ChevronDown size={13} color={theme.textMuted} />
+          ) : (
+            <ChevronRight size={13} color={theme.textMuted} />
+          )}
+        </span>
+      </div>
+
+      {/* Expanded JSON panel */}
+      {expanded && (
+        <div
+          style={{
+            padding: "10px 14px",
+            fontSize: 11,
+            color: theme.textSecondary,
+            fontFamily: theme.fontCode,
+            maxHeight: 240,
+            overflow: "auto",
+            whiteSpace: "pre-wrap",
+            wordBreak: "break-all",
+            background: codeBg,
+            borderRadius: contentRadius,
+            lineHeight: 1.5,
+          }}
+        >
+          {JSON.stringify(input, null, 2)}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Tool Group — mini-window with count badge
+// ---------------------------------------------------------------------------
+
+function ToolGroupView({ name, blocks }: { name: string; blocks: ToolUseBlock[] }) {
+  const [expanded, setExpanded] = useState(false);
+  const theme = useThemeStore((s) => s.current);
+  const toolName = name || "Tool";
+  const summaryFn = TOOL_SUMMARIES[toolName];
+  const Icon = TOOL_ICONS[toolName] || Wrench;
+
+  const summaries = blocks
+    .map((b) => {
+      const input = (b.input || {}) as Record<string, unknown>;
+      return summaryFn ? summaryFn(input) : "";
+    })
+    .filter(Boolean);
+
+  const preview =
+    summaries.length <= 2
+      ? summaries.join(", ")
+      : `${summaries[0]}, ${summaries[1]}, +${summaries.length - 2}`;
+
+  const outerRadius = theme.borderRadius;
+  const titleRadius = expanded
+    ? `${outerRadius}px ${outerRadius}px 0 0`
+    : outerRadius;
+  const contentRadius = `0 0 ${outerRadius}px ${outerRadius}px`;
+
+  return (
+    <div
+      style={{
+        borderRadius: outerRadius,
+        border: `2px solid ${theme.borderStrong}`,
+        boxShadow: theme.shadowChunky,
+        minWidth: 0,
+      }}
+    >
+      {/* Title bar */}
+      <div
+        onClick={() => setExpanded(!expanded)}
+        style={{
+          padding: "8px 12px",
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+          cursor: "pointer",
+          userSelect: "none",
+          background: theme.bgCard,
+          borderBottom: expanded ? `1px solid ${theme.borderColor}` : undefined,
+          borderRadius: titleRadius,
+          transition: `background 0.15s ease`,
+          minHeight: 34,
+          minWidth: 0,
+        }}
+      >
+        {/* Window button dot */}
+        <span
+          style={{
+            display: "inline-block",
+            width: 8,
+            height: 8,
+            borderRadius: "50%",
+            background: theme.lavender,
+            border: `1.5px solid ${theme.borderStrong}`,
+            flexShrink: 0,
+          }}
+        />
+
+        {/* Tool icon */}
+        <Icon size={12} color={theme.lavender} strokeWidth={2.5} style={{ flexShrink: 0 }} />
+
+        {/* Tool name */}
+        <span
+          style={{
+            fontSize: 12,
+            fontWeight: 700,
+            color: theme.textPrimary,
+            fontFamily: theme.fontHeading,
+            letterSpacing: "0.01em",
+            whiteSpace: "nowrap",
+          }}
+        >
+          {toolName}
+        </span>
+
+        {/* Count badge pill */}
+        <Badge variant="count" color={theme.lavender}>
+          &times;{blocks.length}
+        </Badge>
+
+        {/* Summary preview */}
+        {!expanded && preview && (
+          <span
+            style={{
+              fontSize: 11,
+              color: theme.textMuted,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+              flex: 1,
+              minWidth: 0,
+              fontFamily: theme.fontCode,
+            }}
+          >
+            {preview}
+          </span>
+        )}
+
+        {/* Collapse chevron */}
+        <span style={{ flexShrink: 0, display: "flex", alignItems: "center", marginLeft: "auto" }}>
+          {expanded ? (
+            <ChevronDown size={13} color={theme.textMuted} />
+          ) : (
+            <ChevronRight size={13} color={theme.textMuted} />
+          )}
+        </span>
+      </div>
+
+      {/* Expanded: nested tool views */}
+      {expanded && (
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            borderRadius: contentRadius,
+            overflow: "hidden",
+          }}
+        >
+          {blocks.map((b, i) => (
+            <ToolUseView key={i} block={b} nested />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// AskUserQuestion — interactive kawaii card
+// ---------------------------------------------------------------------------
 
 interface QuestionOption {
   label: string;
@@ -341,83 +783,153 @@ function AskUserQuestionView({ block, agentId }: { block: ToolUseBlock; agentId:
   return (
     <div
       style={{
-        padding: "12px 16px",
-        borderRadius: 8,
-        background: theme.lavenderLight,
-        border: `1px solid ${theme.lavender}`,
+        borderRadius: theme.borderRadius,
+        background: theme.pinkLight,
+        border: `2px solid ${theme.borderStrong}`,
+        boxShadow: theme.shadowChunky,
+        overflow: "hidden",
       }}
     >
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
-        <HelpCircle size={14} color={theme.lavender} />
-        <span style={{ fontSize: 12, fontWeight: 600, color: theme.textPrimary, fontFamily: theme.fontHeading }}>
-          Question from Claude
+      {/* Header bar */}
+      <div
+        style={{
+          padding: "10px 16px",
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+          borderBottom: `1px solid ${theme.borderColor}`,
+          background: theme.pinkLight,
+        }}
+      >
+        <HelpCircle size={15} color={theme.pink} strokeWidth={2.5} />
+        <span
+          style={{
+            fontSize: 13,
+            fontWeight: 700,
+            color: theme.textPrimary,
+            fontFamily: theme.fontHeading,
+            letterSpacing: "0.01em",
+          }}
+        >
+          Claude has a question!
         </span>
+        <span style={{ fontSize: 13 }}>&#128172;</span>
       </div>
 
-      {questions.map((q, qIdx) => (
-        <div key={qIdx} style={{ marginBottom: qIdx < questions.length - 1 ? 12 : 0 }}>
-          {q.header && (
-            <div style={{ fontSize: 10, fontWeight: 600, color: theme.textMuted, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4 }}>
-              {q.header}
+      {/* Question body */}
+      <div style={{ padding: "14px 16px" }}>
+        {questions.map((q, qIdx) => (
+          <div key={qIdx} style={{ marginBottom: qIdx < questions.length - 1 ? 16 : 0 }}>
+            {q.header && (
+              <div
+                style={{
+                  fontSize: 10,
+                  fontWeight: 700,
+                  color: theme.textMuted,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.06em",
+                  marginBottom: 4,
+                  fontFamily: theme.fontHeading,
+                }}
+              >
+                {q.header}
+              </div>
+            )}
+            <div
+              style={{
+                fontSize: 13,
+                color: theme.textPrimary,
+                marginBottom: 10,
+                lineHeight: 1.5,
+                fontFamily: theme.fontBody,
+              }}
+            >
+              {q.question}
             </div>
-          )}
-          <div style={{ fontSize: 13, color: theme.textPrimary, marginBottom: 8 }}>
-            {q.question}
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-            {q.options.map((opt) => {
-              const selected = (answered[qIdx] || []).includes(opt.label);
-              return (
-                <Button
-                  key={opt.label}
-                  variant={selected ? "primary" : "secondary"}
-                  onClick={() => canRespond && handleSelect(qIdx, opt.label, !!q.multiSelect)}
-                  disabled={!canRespond}
-                  style={{
-                    justifyContent: "flex-start",
-                    textAlign: "left",
-                    padding: "8px 12px",
-                    background: selected ? theme.lavenderLight : theme.bgCard,
-                    border: selected ? `1px solid ${theme.lavender}` : `1px solid ${theme.borderColor}`,
-                    color: theme.textPrimary,
-                    boxShadow: "none",
-                    fontWeight: 400,
-                    fontFamily: "inherit",
-                  }}
-                >
-                  <div>
-                    <div style={{ fontWeight: 500 }}>{opt.label}</div>
-                    {opt.description && (
-                      <div style={{ fontSize: 11, color: theme.textSecondary, marginTop: 2 }}>{opt.description}</div>
-                    )}
-                  </div>
-                </Button>
-              );
-            })}
-          </div>
-        </div>
-      ))}
 
-      {canRespond && allAnswered && (
-        <Button
-          variant="primary"
-          onClick={handleSubmit}
-          style={{ marginTop: 12, fontSize: 12 }}
-        >
-          Send Answer
-        </Button>
-      )}
+            {/* Option buttons */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              {q.options.map((opt) => {
+                const selected = (answered[qIdx] || []).includes(opt.label);
+                return (
+                  <Button
+                    key={opt.label}
+                    variant={selected ? "primary" : "secondary"}
+                    onClick={() => canRespond && handleSelect(qIdx, opt.label, !!q.multiSelect)}
+                    disabled={!canRespond}
+                    style={{
+                      justifyContent: "flex-start",
+                      textAlign: "left",
+                      padding: "10px 14px",
+                      background: selected ? theme.pinkLight : theme.bgSurface,
+                      border: selected ? `2px solid ${theme.pink}` : `2px solid ${theme.borderColor}`,
+                      color: theme.textPrimary,
+                      boxShadow: selected ? theme.shadowChunky : theme.shadowPress,
+                      fontWeight: 400,
+                      fontFamily: theme.fontBody,
+                      borderRadius: theme.borderRadiusSm,
+                      transition: `all 0.18s ${theme.easeSpring}`,
+                    }}
+                  >
+                    <div>
+                      <div style={{ fontWeight: 600, fontSize: 13 }}>{opt.label}</div>
+                      {opt.description && (
+                        <div
+                          style={{
+                            fontSize: 11,
+                            color: theme.textSecondary,
+                            marginTop: 2,
+                            lineHeight: 1.4,
+                          }}
+                        >
+                          {opt.description}
+                        </div>
+                      )}
+                    </div>
+                  </Button>
+                );
+              })}
+            </div>
+          </div>
+        ))}
 
-      {!canRespond && Object.keys(answered).length === 0 && (
-        <div style={{ fontSize: 11, color: theme.textMuted, marginTop: 8, fontStyle: "italic" }}>
-          Auto-answered (agent was in bypass mode). You can override by sending a follow-up message.
-        </div>
-      )}
+        {/* Submit button */}
+        {canRespond && allAnswered && (
+          <Button
+            variant="primary"
+            onClick={handleSubmit}
+            style={{
+              marginTop: 14,
+              fontSize: 12,
+              width: "100%",
+            }}
+          >
+            Send Answer
+          </Button>
+        )}
+
+        {/* Auto-answered hint */}
+        {!canRespond && Object.keys(answered).length === 0 && (
+          <div
+            style={{
+              fontSize: 11,
+              color: theme.textMuted,
+              marginTop: 10,
+              fontStyle: "italic",
+              fontFamily: theme.fontBody,
+            }}
+          >
+            Auto-answered (agent was in bypass mode). You can override by sending a follow-up message.
+          </div>
+        )}
+      </div>
     </div>
   );
 }
 
-// --- Plan renderer ---
+// ---------------------------------------------------------------------------
+// Plan Review — gold-themed card
+// ---------------------------------------------------------------------------
 
 function PlanView({ block, agentId }: { block: ToolUseBlock; agentId: string }) {
   const input = block.input as Record<string, unknown>;
@@ -441,213 +953,88 @@ function PlanView({ block, agentId }: { block: ToolUseBlock; agentId: string }) 
   return (
     <div
       style={{
-        padding: "12px 16px",
-        borderRadius: 8,
-        background: theme.mintLight,
-        border: `1px solid ${theme.mint}`,
+        borderRadius: theme.borderRadius,
+        background: theme.goldLight,
+        border: `2px solid ${theme.gold}`,
+        boxShadow: theme.shadowChunky,
+        overflow: "hidden",
       }}
     >
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-        <FileText size={14} color={theme.mint} />
-        <span style={{ fontSize: 12, fontWeight: 600, color: theme.textPrimary, fontFamily: theme.fontHeading }}>
-          Plan Ready for Review
+      {/* Header bar */}
+      <div
+        style={{
+          padding: "10px 16px",
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+          borderBottom: `1px solid ${theme.borderColor}`,
+        }}
+      >
+        <FileText size={15} color={theme.gold} strokeWidth={2.5} />
+        <span
+          style={{
+            fontSize: 13,
+            fontWeight: 700,
+            color: theme.textPrimary,
+            fontFamily: theme.fontHeading,
+            letterSpacing: "0.01em",
+          }}
+        >
+          Plan ready for review
         </span>
+        <span style={{ fontSize: 13 }}>&#128203;</span>
       </div>
-      {plan && (
-        <div
-          style={{
-            maxHeight: 300,
-            overflow: "auto",
-            marginBottom: canRespond ? 12 : 0,
-          }}
-        >
-          <MarkdownRenderer content={plan} />
-        </div>
-      )}
-      {canRespond && (
-        <div style={{ display: "flex", gap: 8 }}>
-          <Button variant="primary" color={theme.mint} onClick={handleApprove} style={{ fontSize: 12 }}>
-            Approve Plan
-          </Button>
-          <Button variant="secondary" onClick={handleReject} style={{ fontSize: 12 }}>
-            Request Changes
-          </Button>
-        </div>
-      )}
-      {sent && (
-        <div style={{ fontSize: 11, color: theme.textMuted, marginTop: 8, fontStyle: "italic" }}>
-          Response sent
-        </div>
-      )}
-    </div>
-  );
-}
 
-
-// --- Compact tool use renderer ---
-
-const TOOL_SUMMARIES: Record<string, (input: Record<string, unknown>) => string> = {
-  Read: (input) => `${input.file_path || ""}`,
-  Edit: (input) => `${input.file_path || ""}`,
-  Write: (input) => `${input.file_path || ""}`,
-  Bash: (input) => `${(input.command as string || "").substring(0, 80)}`,
-  Glob: (input) => `${input.pattern || ""}`,
-  Grep: (input) => `${input.pattern || ""}`,
-  Task: (input) => `${input.description || ""}`,
-  TaskCreate: (input) => `${input.subject || ""}`,
-  TaskUpdate: (input) => `#${input.taskId || ""} → ${input.status || ""}`,
-  EnterPlanMode: () => "Entering plan mode",
-  WebSearch: (input) => `"${input.query || ""}"`,
-  WebFetch: (input) => `${input.url || ""}`,
-};
-
-function ToolGroupView({ name, blocks }: { name: string; blocks: ToolUseBlock[] }) {
-  const [expanded, setExpanded] = useState(false);
-  const theme = useThemeStore((s) => s.current);
-  const summaryFn = TOOL_SUMMARIES[name];
-  const Icon = TOOL_ICONS[name] || Wrench;
-
-  const summaries = blocks
-    .map((b) => {
-      const input = b.input as Record<string, unknown>;
-      return summaryFn ? summaryFn(input) : "";
-    })
-    .filter(Boolean);
-
-  const preview =
-    summaries.length <= 2
-      ? summaries.join(", ")
-      : `${summaries[0]}, ${summaries[1]}, +${summaries.length - 2}`;
-
-  return (
-    <div
-      style={{
-        borderRadius: 8,
-        background: theme.lavenderLight,
-        border: `1px solid ${theme.lavender}40`,
-        overflow: "hidden",
-      }}
-    >
-      <div
-        onClick={() => setExpanded(!expanded)}
-        style={{
-          padding: "8px 12px",
-          display: "flex",
-          alignItems: "center",
-          gap: 8,
-          cursor: "pointer",
-          userSelect: "none",
-        }}
-      >
-        {expanded ? (
-          <ChevronDown size={12} color={theme.textMuted} />
-        ) : (
-          <ChevronRight size={12} color={theme.textMuted} />
+      {/* Plan content */}
+      <div style={{ padding: "14px 16px" }}>
+        {plan && (
+          <div
+            style={{
+              maxHeight: 320,
+              overflow: "auto",
+              marginBottom: canRespond ? 14 : 0,
+            }}
+          >
+            <MarkdownRenderer content={plan} />
+          </div>
         )}
-        <Icon size={11} color={theme.lavender} />
-        <span style={{ fontSize: 12, fontWeight: 600, color: theme.textPrimary }}>{name}</span>
-        <Badge variant="count" color={theme.lavender}>
-          &times;{blocks.length}
-        </Badge>
-        {!expanded && preview && (
-          <span
+
+        {/* Action buttons */}
+        {canRespond && (
+          <div style={{ display: "flex", gap: 10 }}>
+            <Button
+              variant="primary"
+              color={theme.mint}
+              onClick={handleApprove}
+              style={{ fontSize: 12, flex: 1 }}
+              icon={<CheckCircle size={13} />}
+            >
+              Approve Plan
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={handleReject}
+              style={{ fontSize: 12, flex: 1 }}
+            >
+              Request Changes
+            </Button>
+          </div>
+        )}
+
+        {sent && (
+          <div
             style={{
               fontSize: 11,
               color: theme.textMuted,
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-              flex: 1,
+              marginTop: 10,
+              fontStyle: "italic",
+              fontFamily: theme.fontBody,
             }}
           >
-            {preview}
-          </span>
+            Response sent
+          </div>
         )}
       </div>
-      {expanded && (
-        <div
-          style={{
-            borderTop: `1px solid ${theme.lavender}30`,
-            display: "flex",
-            flexDirection: "column",
-          }}
-        >
-          {blocks.map((b, i) => (
-            <ToolUseView key={i} block={b} />
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function ToolUseView({ block }: { block: ToolUseBlock }) {
-  const [expanded, setExpanded] = useState(false);
-  const theme = useThemeStore((s) => s.current);
-  const input = block.input as Record<string, unknown>;
-  const summaryFn = TOOL_SUMMARIES[block.name];
-  const summary = summaryFn ? summaryFn(input) : "";
-  const Icon = TOOL_ICONS[block.name] || Wrench;
-
-  return (
-    <div
-      style={{
-        borderRadius: 8,
-        background: theme.lavenderLight,
-        border: `1px solid ${theme.lavender}40`,
-        overflow: "hidden",
-      }}
-    >
-      <div
-        onClick={() => setExpanded(!expanded)}
-        style={{
-          padding: "8px 12px",
-          display: "flex",
-          alignItems: "center",
-          gap: 8,
-          cursor: "pointer",
-          userSelect: "none",
-        }}
-      >
-        {expanded ? (
-          <ChevronDown size={12} color={theme.textMuted} />
-        ) : (
-          <ChevronRight size={12} color={theme.textMuted} />
-        )}
-        <Icon size={11} color={theme.lavender} />
-        <span style={{ fontSize: 12, fontWeight: 600, color: theme.textPrimary }}>{block.name}</span>
-        {summary && (
-          <span
-            style={{
-              fontSize: 11,
-              color: theme.textMuted,
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-              flex: 1,
-            }}
-          >
-            {summary}
-          </span>
-        )}
-      </div>
-      {expanded && (
-        <div
-          style={{
-            padding: "8px 12px",
-            borderTop: `1px solid ${theme.lavender}30`,
-            fontSize: 11,
-            color: theme.textSecondary,
-            fontFamily: theme.fontCode,
-            maxHeight: 200,
-            overflow: "auto",
-            whiteSpace: "pre-wrap",
-            wordBreak: "break-all",
-          }}
-        >
-          {JSON.stringify(input, null, 2)}
-        </div>
-      )}
     </div>
   );
 }

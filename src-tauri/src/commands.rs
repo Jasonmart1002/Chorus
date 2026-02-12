@@ -24,6 +24,10 @@ pub async fn create_agent(
     manager: tauri::State<'_, ManagerState>,
     app: tauri::AppHandle,
 ) -> Result<CreateAgentResult, String> {
+    if !std::path::Path::new(&cwd).is_dir() {
+        return Err(format!("Directory does not exist: {}", cwd));
+    }
+
     let agent_id = uuid::Uuid::new_v4().to_string();
     let session_id = uuid::Uuid::new_v4().to_string();
     let perm_mode = permission_mode.unwrap_or_else(|| "bypassPermissions".to_string());
@@ -204,6 +208,10 @@ pub async fn run_command(
 ) -> Result<(), String> {
     use std::process::Stdio;
     use tokio::io::{AsyncBufReadExt, BufReader};
+
+    if !std::path::Path::new(&cwd).is_dir() {
+        return Err(format!("Directory does not exist: {}", cwd));
+    }
 
     let mut cmd = tokio::process::Command::new("sh");
     cmd.arg("-c")

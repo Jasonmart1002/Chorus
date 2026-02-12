@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1024" y2="1024" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#1e1e2e"/>
+      <stop offset="1" stop-color="#181825"/>
+    </linearGradient>
+    <linearGradient id="fg" x1="220" y1="810" x2="800" y2="200" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#f5c2e7"/>
+      <stop offset=".5" stop-color="#cba6f7"/>
+      <stop offset="1" stop-color="#b4befe"/>
+    </linearGradient>
+    <radialGradient id="shine" cx="0.35" cy="0.25" r="0.65">
+      <stop offset="0%" stop-color="white" stop-opacity="0.05"/>
+      <stop offset="100%" stop-color="white" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1024" height="1024" rx="224" fill="url(#bg)"/>
+  <rect width="1024" height="1024" rx="224" fill="url(#shine)"/>
+
+  <!-- Three ascending beamed notes -->
+  <g fill="url(#fg)">
+    <!-- Note heads -->
+    <ellipse cx="296" cy="753" rx="76" ry="56" transform="rotate(-20 296 753)"/>
+    <ellipse cx="502" cy="681" rx="76" ry="56" transform="rotate(-20 502 681)"/>
+    <ellipse cx="708" cy="609" rx="76" ry="56" transform="rotate(-20 708 609)"/>
+
+    <!-- Stems -->
+    <rect x="358" y="341" width="28" height="412" rx="4"/>
+    <rect x="564" y="273" width="28" height="408" rx="4"/>
+    <rect x="770" y="197" width="28" height="412" rx="4"/>
+
+    <!-- Upper beam -->
+    <path d="M358 341 L798 197 L798 245 L358 389Z"/>
+
+    <!-- Lower beam -->
+    <path d="M358 405 L798 261 L798 309 L358 453Z"/>
+  </g>
+</svg>

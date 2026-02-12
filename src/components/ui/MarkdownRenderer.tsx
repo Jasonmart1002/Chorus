@@ -1,9 +1,8 @@
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { PrismLight as SyntaxHighlighter } from "react-syntax-highlighter";
-import type { CSSProperties } from "react";
 import { useThemeStore } from "../../store/themeStore";
-import type { ThemeColors } from "../../lib/theme";
+import { CODE_BG, CODE_MANTLE, CODE_BORDER, CODE_SUBTEXT, buildCodeSyntaxTheme } from "../../lib/codeTheme";
 
 // Register common languages
 import tsx from "react-syntax-highlighter/dist/esm/languages/prism/tsx";
@@ -41,63 +40,13 @@ SyntaxHighlighter.registerLanguage("yaml", yaml);
 SyntaxHighlighter.registerLanguage("yml", yaml);
 SyntaxHighlighter.registerLanguage("diff", diff);
 
-function buildSyntaxTheme(theme: ThemeColors): Record<string, CSSProperties> {
-  return {
-    'code[class*="language-"]': {
-      color: theme.textPrimary,
-      fontFamily: theme.fontCode,
-      fontSize: "12px",
-      lineHeight: "1.5",
-    },
-    'pre[class*="language-"]': {
-      color: theme.textPrimary,
-      fontFamily: theme.fontCode,
-      fontSize: "12px",
-      lineHeight: "1.5",
-      margin: 0,
-      padding: "12px",
-      overflow: "auto",
-      background: theme.bgSurface,
-    },
-    comment: { color: theme.textMuted },
-    prolog: { color: theme.textMuted },
-    doctype: { color: theme.textMuted },
-    cdata: { color: theme.textMuted },
-    punctuation: { color: theme.textSecondary },
-    property: { color: theme.peach },
-    tag: { color: theme.peach },
-    boolean: { color: theme.peach },
-    number: { color: theme.peach },
-    constant: { color: theme.peach },
-    symbol: { color: theme.peach },
-    deleted: { color: theme.peach },
-    selector: { color: theme.mint },
-    "attr-name": { color: theme.butter },
-    string: { color: theme.mint },
-    char: { color: theme.mint },
-    builtin: { color: theme.mint },
-    inserted: { color: theme.mint },
-    operator: { color: theme.textSecondary },
-    entity: { color: theme.textSecondary },
-    url: { color: theme.textSecondary },
-    atrule: { color: theme.lavender },
-    "attr-value": { color: theme.lavender },
-    keyword: { color: theme.lavender },
-    function: { color: theme.lavender },
-    "class-name": { color: theme.butter },
-    regex: { color: theme.mint },
-    important: { color: theme.peach, fontWeight: "bold" },
-    variable: { color: theme.textPrimary },
-  };
-}
-
 interface Props {
   content: string;
 }
 
 export function MarkdownRenderer({ content }: Props) {
   const theme = useThemeStore((s) => s.current);
-  const syntaxTheme = buildSyntaxTheme(theme);
+  const syntaxTheme = buildCodeSyntaxTheme(theme.fontCode);
 
   return (
     <ReactMarkdown
@@ -112,6 +61,7 @@ export function MarkdownRenderer({ content }: Props) {
               color: theme.textPrimary,
               margin: "16px 0 8px",
               lineHeight: 1.3,
+              textShadow: "1px 1px 0px rgba(0,0,0,0.08)",
             }}
           >
             {children}
@@ -126,6 +76,7 @@ export function MarkdownRenderer({ content }: Props) {
               color: theme.textPrimary,
               margin: "14px 0 6px",
               lineHeight: 1.3,
+              textShadow: "1px 1px 0px rgba(0,0,0,0.08)",
             }}
           >
             {children}
@@ -140,6 +91,7 @@ export function MarkdownRenderer({ content }: Props) {
               color: theme.textPrimary,
               margin: "12px 0 4px",
               lineHeight: 1.4,
+              textShadow: "1px 1px 0px rgba(0,0,0,0.08)",
             }}
           >
             {children}
@@ -154,6 +106,7 @@ export function MarkdownRenderer({ content }: Props) {
               color: theme.textPrimary,
               margin: "10px 0 4px",
               lineHeight: 1.4,
+              textShadow: "1px 1px 0px rgba(0,0,0,0.08)",
             }}
           >
             {children}
@@ -163,8 +116,9 @@ export function MarkdownRenderer({ content }: Props) {
           <p
             style={{
               fontSize: 13,
-              lineHeight: 1.6,
+              lineHeight: 1.7,
               color: theme.textPrimary,
+              fontFamily: theme.fontBody,
               margin: "6px 0",
             }}
           >
@@ -177,8 +131,9 @@ export function MarkdownRenderer({ content }: Props) {
             target="_blank"
             rel="noopener noreferrer"
             style={{
-              color: theme.lavender,
+              color: theme.pink,
               textDecoration: "underline",
+              fontWeight: 600,
             }}
           >
             {children}
@@ -194,10 +149,11 @@ export function MarkdownRenderer({ content }: Props) {
             return (
               <div
                 style={{
-                  borderRadius: 6,
+                  borderRadius: theme.borderRadiusSm,
                   overflow: "hidden",
                   margin: "8px 0",
-                  border: `1px solid ${theme.borderColor}`,
+                  border: `2px solid ${CODE_BORDER}`,
+                  background: CODE_BG,
                 }}
               >
                 {lang && (
@@ -206,9 +162,11 @@ export function MarkdownRenderer({ content }: Props) {
                       padding: "4px 12px",
                       fontSize: 10,
                       fontFamily: theme.fontCode,
-                      color: theme.textMuted,
-                      background: theme.bgSurface,
-                      borderBottom: `1px solid ${theme.borderColor}`,
+                      color: CODE_SUBTEXT,
+                      background: CODE_MANTLE,
+                      borderBottom: `1px solid ${CODE_BORDER}`,
+                      fontWeight: 700,
+                      letterSpacing: "0.02em",
                     }}
                   >
                     {lang}
@@ -231,10 +189,11 @@ export function MarkdownRenderer({ content }: Props) {
               style={{
                 fontFamily: theme.fontCode,
                 fontSize: 12,
-                background: theme.bgSurface,
-                borderRadius: 4,
-                padding: "1px 5px",
+                background: theme.bgCard,
+                borderRadius: 6,
+                padding: "1px 6px",
                 color: theme.textPrimary,
+                border: `1px solid ${theme.borderColor}`,
               }}
             >
               {children}
@@ -248,8 +207,9 @@ export function MarkdownRenderer({ content }: Props) {
               paddingLeft: 20,
               margin: "6px 0",
               fontSize: 13,
-              lineHeight: 1.6,
+              lineHeight: 1.7,
               color: theme.textPrimary,
+              fontFamily: theme.fontBody,
             }}
           >
             {children}
@@ -261,8 +221,9 @@ export function MarkdownRenderer({ content }: Props) {
               paddingLeft: 20,
               margin: "6px 0",
               fontSize: 13,
-              lineHeight: 1.6,
+              lineHeight: 1.7,
               color: theme.textPrimary,
+              fontFamily: theme.fontBody,
             }}
           >
             {children}
@@ -274,26 +235,36 @@ export function MarkdownRenderer({ content }: Props) {
         blockquote: ({ children }) => (
           <blockquote
             style={{
-              borderLeft: `3px solid ${theme.lavender}`,
-              background: theme.bgSurface,
+              borderLeft: `3px solid ${theme.pink}`,
+              background: theme.bgCard,
               margin: "8px 0",
               padding: "8px 12px",
-              borderRadius: "0 6px 6px 0",
+              borderRadius: `0 ${theme.borderRadiusSm}px ${theme.borderRadiusSm}px 0`,
               color: theme.textSecondary,
               fontSize: 13,
+              fontFamily: theme.fontBody,
             }}
           >
             {children}
           </blockquote>
         ),
         table: ({ children }) => (
-          <div style={{ overflowX: "auto", margin: "8px 0" }}>
+          <div
+            style={{
+              overflowX: "auto",
+              margin: "8px 0",
+              borderRadius: theme.borderRadiusSm,
+              border: `2px solid ${theme.borderStrong}`,
+              overflow: "hidden",
+            }}
+          >
             <table
               style={{
                 borderCollapse: "collapse",
                 width: "100%",
                 fontSize: 12,
                 color: theme.textPrimary,
+                fontFamily: theme.fontBody,
               }}
             >
               {children}
@@ -301,7 +272,7 @@ export function MarkdownRenderer({ content }: Props) {
           </div>
         ),
         thead: ({ children }) => (
-          <thead style={{ background: theme.bgSurface }}>{children}</thead>
+          <thead style={{ background: theme.bgCard }}>{children}</thead>
         ),
         th: ({ children }) => (
           <th
@@ -309,8 +280,9 @@ export function MarkdownRenderer({ content }: Props) {
               border: `1px solid ${theme.borderColor}`,
               padding: "6px 10px",
               textAlign: "left",
-              fontWeight: 600,
+              fontWeight: 700,
               fontSize: 12,
+              fontFamily: theme.fontHeading,
             }}
           >
             {children}
@@ -331,18 +303,20 @@ export function MarkdownRenderer({ content }: Props) {
           <hr
             style={{
               border: "none",
-              borderTop: `1px solid ${theme.borderColor}`,
+              borderTop: `2px solid ${theme.borderColor}`,
               margin: "12px 0",
             }}
           />
         ),
         strong: ({ children }) => (
-          <strong style={{ fontWeight: 600, color: theme.textPrimary }}>
+          <strong style={{ fontWeight: 700, color: theme.textPrimary }}>
             {children}
           </strong>
         ),
         em: ({ children }) => (
-          <em style={{ color: theme.textSecondary }}>{children}</em>
+          <em style={{ color: theme.textSecondary, fontStyle: "italic" }}>
+            {children}
+          </em>
         ),
       }}
     >

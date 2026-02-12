@@ -72,7 +72,16 @@ export function NewAgentDialog({ onClose }: Props) {
     >
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         <label style={{ display: "block" }}>
-          <span style={{ fontSize: 12, color: theme.textSecondary, display: "block", marginBottom: 4 }}>
+          <span
+            style={{
+              fontSize: 12,
+              fontWeight: 600,
+              fontFamily: theme.fontBody,
+              color: theme.textSecondary,
+              display: "block",
+              marginBottom: 4,
+            }}
+          >
             Name
           </span>
           <Input
@@ -84,7 +93,16 @@ export function NewAgentDialog({ onClose }: Props) {
         </label>
 
         <label style={{ display: "block" }}>
-          <span style={{ fontSize: 12, color: theme.textSecondary, display: "block", marginBottom: 4 }}>
+          <span
+            style={{
+              fontSize: 12,
+              fontWeight: 600,
+              fontFamily: theme.fontBody,
+              color: theme.textSecondary,
+              display: "block",
+              marginBottom: 4,
+            }}
+          >
             Working Directory
           </span>
           <div style={{ display: "flex", gap: 8 }}>
@@ -100,14 +118,23 @@ export function NewAgentDialog({ onClose }: Props) {
               tooltip="Browse"
               onClick={handlePickDir}
               variant="tinted"
-              tintColor={theme.lavender}
+              tintColor={theme.pink}
               size="md"
             />
           </div>
         </label>
 
         <label style={{ display: "block" }}>
-          <span style={{ fontSize: 12, color: theme.textSecondary, display: "block", marginBottom: 4 }}>
+          <span
+            style={{
+              fontSize: 12,
+              fontWeight: 600,
+              fontFamily: theme.fontBody,
+              color: theme.textSecondary,
+              display: "block",
+              marginBottom: 4,
+            }}
+          >
             Permission Mode
           </span>
           <select
@@ -117,10 +144,11 @@ export function NewAgentDialog({ onClose }: Props) {
               width: "100%",
               padding: "8px 12px",
               background: theme.bgBase,
-              border: `1px solid ${theme.mauve}`,
-              borderRadius: 8,
+              border: `2px solid ${theme.borderStrong}`,
+              borderRadius: theme.borderRadiusSm,
               color: theme.textPrimary,
               fontSize: 14,
+              fontFamily: theme.fontBody,
               outline: "none",
             }}
           >
@@ -134,10 +162,11 @@ export function NewAgentDialog({ onClose }: Props) {
             style={{
               padding: "8px 12px",
               background: theme.peachLight,
-              border: `1px solid ${theme.peach}`,
-              borderRadius: 8,
+              border: `2px solid ${theme.peach}`,
+              borderRadius: theme.borderRadiusSm,
               color: theme.textPrimary,
               fontSize: 12,
+              fontFamily: theme.fontBody,
               wordBreak: "break-word",
             }}
           >

@@ -3,3 +3,25 @@ dist/
 src-tauri/target/
 .DS_Store
 *.log
+
+# Environment & secrets
+*.env
+.env.*
+*.pem
+*.key
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*~
+
+# Build artifacts
+*.dmg
+*.msi
+*.exe
+*.deb
+*.AppImage
+
+# OS
+Thumbs.db

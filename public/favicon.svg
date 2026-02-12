@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="256" y2="256" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#1e1e2e"/>
+      <stop offset="1" stop-color="#181825"/>
+    </linearGradient>
+    <linearGradient id="fg" x1="56" y1="210" x2="200" y2="44" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#f5c2e7"/>
+      <stop offset=".5" stop-color="#cba6f7"/>
+      <stop offset="1" stop-color="#b4befe"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="256" height="256" rx="56" fill="url(#bg)"/>
+
+  <!-- Three ascending beamed notes (single beam for small-size clarity) -->
+  <g fill="url(#fg)">
+    <!-- Note heads -->
+    <ellipse cx="74" cy="188" rx="22" ry="16" transform="rotate(-20 74 188)"/>
+    <ellipse cx="126" cy="170" rx="22" ry="16" transform="rotate(-20 126 170)"/>
+    <ellipse cx="178" cy="152" rx="22" ry="16" transform="rotate(-20 178 152)"/>
+
+    <!-- Stems -->
+    <rect x="92" y="82" width="8" height="110" rx="2"/>
+    <rect x="144" y="64" width="8" height="110" rx="2"/>
+    <rect x="196" y="46" width="8" height="110" rx="2"/>
+
+    <!-- Single beam -->
+    <path d="M92 82 L204 46 L204 62 L92 98Z"/>
+  </g>
+</svg>

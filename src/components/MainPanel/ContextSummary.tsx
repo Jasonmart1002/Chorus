@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Cpu, RotateCw, Folder, Play, Loader, GitBranch, ChevronDown, TerminalSquare } from "lucide-react";
 import type { Agent } from "../../types/agent";
-import { STATUS_COLORS, STATUS_LABELS } from "../../lib/constants";
+import { getStatusColors, STATUS_LABELS } from "../../lib/constants";
 import { useAgentStore } from "../../store/agentStore";
 import { useSidebarStore } from "../../store/sidebarStore";
 import { useThemeStore } from "../../store/themeStore";
@@ -42,7 +42,7 @@ interface Props {
 export function ContextSummary({ agent }: Props) {
   const prefs = useSidebarStore((s) => s.getPrefs(agent.id));
   const theme = useThemeStore((s) => s.current);
-  const statusColor = STATUS_COLORS[agent.status] || theme.textMuted;
+  const statusColor = getStatusColors(theme)[agent.status] || theme.textMuted;
   const displayName = getDisplayName(agent, prefs);
   const [showRun, setShowRun] = useState(false);
   const [showDiff, setShowDiff] = useState(false);
@@ -66,62 +66,123 @@ export function ContextSummary({ agent }: Props) {
     }
   };
 
+  /* Cute info pill style */
+  const pillStyle: React.CSSProperties = {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 5,
+    padding: "3px 10px",
+    background: theme.bgCard,
+    border: `1.5px solid ${theme.borderColor}`,
+    borderRadius: theme.borderRadiusSm,
+    fontSize: 11,
+    fontFamily: theme.fontBody,
+    fontWeight: 600,
+    color: theme.textSecondary,
+    whiteSpace: "nowrap",
+  };
+
+  /* Chunky action button style */
+  const actionBtnStyle = (tint: string): React.CSSProperties => ({
+    width: "auto",
+    padding: "4px 14px",
+    gap: 5,
+    borderRadius: theme.borderRadiusSm,
+    border: `2px solid ${theme.borderStrong}`,
+    boxShadow: theme.shadowChunky,
+    background: tint + "18",
+    transition: `all 0.15s ${theme.easeSpring}`,
+  });
+
   return (
     <>
       <div
         style={{
-          padding: "8px 20px",
-          borderBottom: `1px solid ${theme.borderColor}`,
+          padding: "10px 20px",
           display: "flex",
           alignItems: "center",
-          gap: 16,
-          background: theme.bgSurface,
+          gap: 12,
+          background: theme.bgSidebar,
+          backgroundImage: theme.dotPattern,
+          backgroundSize: "20px 20px",
           fontSize: 12,
           color: theme.textSecondary,
           flexWrap: "wrap",
+          position: "relative",
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <Badge variant="status" color={statusColor} />
-          <span style={{ fontWeight: 600, color: theme.textPrimary, fontSize: 14 }}>
+        {/* Agent name + status */}
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          {/* Status badge with cute white ring */}
+          <div
+            style={{
+              width: 12,
+              height: 12,
+              borderRadius: theme.borderRadiusFull,
+              background: statusColor,
+              border: "2.5px solid white",
+              boxShadow: `0 0 0 1.5px ${statusColor}, ${theme.shadowPress}`,
+              flexShrink: 0,
+            }}
+          />
+          <span
+            style={{
+              fontWeight: 700,
+              color: theme.textPrimary,
+              fontSize: 15,
+              fontFamily: theme.fontHeading,
+              letterSpacing: "-0.01em",
+            }}
+          >
             {displayName}
           </span>
-          <span style={{ color: theme.textMuted }}>&middot;</span>
-          <span>{STATUS_LABELS[agent.status]}</span>
-        </div>
-
-        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-          <Folder size={12} />
-          <span style={{ maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-            {agent.config.cwd}
+          <span style={pillStyle}>
+            {STATUS_LABELS[agent.status]}
           </span>
         </div>
 
-        {agent.num_turns > 0 && (
-          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-            <RotateCw size={12} />
-            <span>{agent.num_turns} turns</span>
-          </div>
-        )}
+        {/* Info pills */}
+        <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+          <span style={pillStyle}>
+            <Folder size={11} color={theme.peach} />
+            <span style={{ maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis" }}>
+              {agent.config.cwd}
+            </span>
+          </span>
 
-        {agent.config.model && (
-          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-            <Cpu size={12} />
-            <span>{agent.config.model}</span>
-          </div>
-        )}
+          {agent.num_turns > 0 && (
+            <span style={pillStyle}>
+              <RotateCw size={11} color={theme.mint} />
+              {agent.num_turns} turns
+            </span>
+          )}
 
+          {agent.config.model && (
+            <span style={pillStyle}>
+              <Cpu size={11} color={theme.lavender} />
+              {agent.config.model}
+            </span>
+          )}
+        </div>
+
+        {/* Action buttons */}
         <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
           <DropdownMenu
             trigger={
               <IconButton
-                icon={<><TerminalSquare size={11} /><span style={{ fontSize: 11, fontWeight: 600 }}>Terminal</span><ChevronDown size={9} /></>}
+                icon={
+                  <>
+                    <TerminalSquare size={12} />
+                    <span style={{ fontSize: 11, fontWeight: 700, fontFamily: theme.fontHeading }}>Terminal</span>
+                    <ChevronDown size={9} />
+                  </>
+                }
                 tooltip="Open terminal"
                 onClick={() => setShowTermMenu(!showTermMenu)}
                 variant="tinted"
-                tintColor={theme.textSecondary}
+                tintColor={theme.lavender}
                 size="md"
-                style={{ width: "auto", padding: "4px 12px", gap: 4 }}
+                style={actionBtnStyle(theme.lavender)}
               />
             }
             open={showTermMenu}
@@ -145,14 +206,20 @@ export function ContextSummary({ agent }: Props) {
           <DropdownMenu
             trigger={
               <IconButton
-                icon={<><GitBranch size={11} /><span style={{ fontSize: 11, fontWeight: 600 }}>Git</span><ChevronDown size={9} /></>}
+                icon={
+                  <>
+                    <GitBranch size={12} />
+                    <span style={{ fontSize: 11, fontWeight: 700, fontFamily: theme.fontHeading }}>Git</span>
+                    <ChevronDown size={9} />
+                  </>
+                }
                 tooltip="Git actions"
                 onClick={() => setShowGitMenu(!showGitMenu)}
                 variant="tinted"
                 tintColor={theme.peach}
                 disabled={!canSend}
                 size="md"
-                style={{ width: "auto", padding: "4px 12px", gap: 4 }}
+                style={actionBtnStyle(theme.peach)}
               />
             }
             open={showGitMenu}
@@ -177,19 +244,38 @@ export function ContextSummary({ agent }: Props) {
           <IconButton
             icon={
               isRunning ? (
-                <><Loader size={11} style={{ animation: "spin 1s linear infinite" }} /><span style={{ fontSize: 11, fontWeight: 600 }}>Running</span></>
+                <>
+                  <Loader size={12} style={{ animation: "spin 1s linear infinite" }} />
+                  <span style={{ fontSize: 11, fontWeight: 700, fontFamily: theme.fontHeading }}>Running</span>
+                </>
               ) : (
-                <><Play size={11} /><span style={{ fontSize: 11, fontWeight: 600 }}>Run</span></>
+                <>
+                  <Play size={12} />
+                  <span style={{ fontSize: 11, fontWeight: 700, fontFamily: theme.fontHeading }}>Run</span>
+                </>
               )
             }
             tooltip="Run command"
             onClick={() => setShowRun(true)}
             variant="tinted"
-            tintColor={isRunning ? theme.lavender : theme.mint}
+            tintColor={isRunning ? theme.pink : theme.mint}
             size="md"
-            style={{ width: "auto", padding: "4px 12px", gap: 4 }}
+            style={actionBtnStyle(isRunning ? theme.pink : theme.mint)}
           />
         </div>
+
+        {/* Bottom gradient divider */}
+        <div
+          style={{
+            position: "absolute",
+            bottom: 0,
+            left: 0,
+            right: 0,
+            height: 2,
+            background: theme.accentGradient,
+            opacity: 0.6,
+          }}
+        />
       </div>
 
       {showRun && <RunDialog cwd={agent.config.cwd} onClose={() => setShowRun(false)} />}

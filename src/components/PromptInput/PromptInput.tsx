@@ -10,13 +10,13 @@ type Mode = "normal" | "plan";
 interface ModeConfig {
   id: Mode;
   label: string;
-  getColor: (lavender: string, butter: string) => string;
+  getColor: (pink: string, gold: string) => string;
   description: string;
 }
 
 const MODES: ModeConfig[] = [
-  { id: "normal", label: "Normal", getColor: (lav) => lav, description: "Execute directly" },
-  { id: "plan", label: "Plan", getColor: (_lav, butter) => butter, description: "Plan first, then implement" },
+  { id: "normal", label: "Normal", getColor: (pink) => pink, description: "Execute directly" },
+  { id: "plan", label: "Plan", getColor: (_pink, gold) => gold, description: "Plan first, then implement" },
 ];
 
 interface Props {
@@ -28,6 +28,7 @@ export function PromptInput({ agentId, disabled }: Props) {
   const [text, setText] = useState("");
   const [mode, setMode] = useState<Mode>("normal");
   const [showModeMenu, setShowModeMenu] = useState(false);
+  const [isFocused, setIsFocused] = useState(false);
   const sendPrompt = useAgentStore((s) => s.sendPrompt);
   const theme = useThemeStore((s) => s.current);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -76,27 +77,42 @@ export function PromptInput({ agentId, disabled }: Props) {
   }, [text]);
 
   const currentMode = MODES.find((m) => m.id === mode)!;
-  const currentColor = currentMode.getColor(theme.lavender, theme.butter);
+  const currentColor = currentMode.getColor(theme.pink, theme.gold);
   const canSend = !!(text.trim() && !disabled);
+
+  const borderColor = isFocused ? theme.pink : theme.borderStrong;
 
   return (
     <div
       style={{
-        padding: "12px 20px 16px",
-        borderTop: `1px solid ${theme.borderColor}`,
+        padding: "14px 20px 18px",
         background: theme.bgSurface,
+        position: "relative",
       }}
     >
+      {/* Top gradient accent line */}
+      <div
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          right: 0,
+          height: 2,
+          background: theme.accentGradient,
+        }}
+      />
+
+      {/* Textarea wrapper -- chunky cute container */}
       <div
         style={{
           display: "flex",
-          gap: 8,
-          alignItems: "flex-end",
+          gap: 10,
+          alignItems: "center",
           background: theme.bgBase,
-          borderRadius: 8,
-          padding: "8px 12px",
-          border: `1px solid ${mode === "plan" ? theme.butter : theme.borderColor}`,
-          transition: "border-color 0.15s",
+          borderRadius: theme.borderRadiusSm,
+          padding: "10px 14px",
+          border: `2px solid ${borderColor}`,
+          transition: `border-color 0.2s ${theme.easeSpring}`,
         }}
       >
         <textarea
@@ -104,7 +120,13 @@ export function PromptInput({ agentId, disabled }: Props) {
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder={disabled ? "Agent is not ready..." : "Send a prompt... (Cmd+Enter)"}
+          onFocus={() => setIsFocused(true)}
+          onBlur={() => setIsFocused(false)}
+          placeholder={
+            disabled
+              ? "Waiting for agent..."
+              : "What shall we work on?"
+          }
           disabled={disabled}
           rows={1}
           style={{
@@ -115,60 +137,80 @@ export function PromptInput({ agentId, disabled }: Props) {
             color: theme.textPrimary,
             fontSize: 14,
             resize: "none",
-            fontFamily: "inherit",
-            lineHeight: 1.5,
+            fontFamily: theme.fontBody,
+            lineHeight: 1.6,
             maxHeight: 200,
           }}
         />
-        <IconButton
-          icon={<Send size={16} color={theme.textOnAccent} />}
-          tooltip="Send prompt"
+
+        {/* Send button -- chunky cute circle */}
+        <button
           onClick={handleSend}
           disabled={!canSend}
-          size="md"
+          title="Send prompt"
           style={{
-            background: canSend ? currentColor : theme.borderColor,
-            borderRadius: 8,
-            opacity: canSend ? 1 : 0.5,
+            width: 36,
+            height: 36,
+            borderRadius: theme.borderRadiusSm,
+            background: canSend ? theme.accentGradient : theme.borderColor,
+            border: canSend ? `2px solid ${theme.borderStrong}` : `2px solid transparent`,
+            boxShadow: canSend ? theme.shadowChunky : "none",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor: canSend ? "pointer" : "default",
+            opacity: canSend ? 1 : 0.45,
+            transition: `all 0.2s ${theme.easeSpring}`,
+            flexShrink: 0,
+            padding: 0,
           }}
-        />
+        >
+          <Send size={16} color={canSend ? theme.textOnAccent : theme.textMuted} />
+        </button>
       </div>
 
+      {/* Bottom row: mode toggle + hint text */}
       <div
         style={{
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          marginTop: 8,
+          marginTop: 10,
           fontSize: 11,
           color: theme.textMuted,
         }}
       >
+        {/* Mode toggle -- cute pill */}
         <DropdownMenu
           trigger={
             <button
               onClick={() => setShowModeMenu(!showModeMenu)}
               style={{
-                background: "none",
-                border: `1px solid ${theme.borderColor}`,
-                borderRadius: 8,
-                padding: "2px 8px",
+                background: theme.bgCard,
+                border: `2px solid ${theme.borderStrong}`,
+                borderRadius: theme.borderRadiusSm,
+                padding: "4px 12px",
                 cursor: "pointer",
                 display: "flex",
                 alignItems: "center",
-                gap: 4,
+                gap: 6,
                 fontSize: 11,
                 color: currentColor,
-                fontWeight: 600,
+                fontWeight: 700,
                 fontFamily: theme.fontHeading,
+                boxShadow: theme.shadowPress,
+                transition: `all 0.15s ${theme.easeSpring}`,
               }}
             >
               <div
                 style={{
-                  width: 8,
-                  height: 8,
-                  borderRadius: "50%",
+                  width: 9,
+                  height: 9,
+                  borderRadius: theme.borderRadiusFull,
                   background: currentColor,
+                  border: "2px solid white",
+                  boxShadow: `0 0 0 1px ${currentColor}`,
+                  flexShrink: 0,
                 }}
               />
               {currentMode.label}
@@ -181,7 +223,7 @@ export function PromptInput({ agentId, disabled }: Props) {
           side="top"
         >
           {MODES.map((m) => {
-            const mColor = m.getColor(theme.lavender, theme.butter);
+            const mColor = m.getColor(theme.pink, theme.gold);
             return (
               <DropdownMenuItem
                 key={m.id}
@@ -193,27 +235,35 @@ export function PromptInput({ agentId, disabled }: Props) {
                 icon={
                   <div
                     style={{
-                      width: 8,
-                      height: 8,
-                      borderRadius: "50%",
+                      width: 9,
+                      height: 9,
+                      borderRadius: theme.borderRadiusFull,
                       background: mColor,
+                      border: "2px solid white",
+                      boxShadow: `0 0 0 1px ${mColor}`,
                       flexShrink: 0,
                     }}
                   />
                 }
               >
                 <div>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: theme.textPrimary }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: theme.textPrimary, fontFamily: theme.fontHeading }}>
                     {m.label}
                   </div>
-                  <div style={{ fontSize: 10, color: theme.textMuted }}>{m.description}</div>
+                  <div style={{ fontSize: 10, color: theme.textMuted, fontFamily: theme.fontBody }}>{m.description}</div>
                 </div>
               </DropdownMenuItem>
             );
           })}
         </DropdownMenu>
 
-        <span>
+        <span
+          style={{
+            fontStyle: "italic",
+            fontFamily: theme.fontBody,
+            opacity: 0.7,
+          }}
+        >
           Shift+Tab to switch mode &middot; Cmd+Enter to send
         </span>
       </div>

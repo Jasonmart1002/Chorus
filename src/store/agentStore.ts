@@ -78,10 +78,9 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
       }));
 
       // Update cost/turns from result messages
-      if ((message as Record<string, unknown>).type === "result") {
-        const result = message as Record<string, unknown>;
-        const costUsd = result.total_cost_usd as number | undefined;
-        const numTurns = result.num_turns as number | undefined;
+      if (message.type === "result") {
+        const costUsd = message.total_cost_usd;
+        const numTurns = message.num_turns;
         if (costUsd !== undefined || numTurns !== undefined) {
           set((state) => {
             const agent = state.agents[agent_id];
@@ -212,7 +211,7 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
   },
 
   sendPrompt: async (agentId, text) => {
-    const userMsg = { type: "user_prompt", text, timestamp: Date.now() };
+    const userMsg: SDKMessage = { type: "user_prompt" as const, text, timestamp: Date.now() };
     set((state) => {
       const { [agentId]: _, ...restAttention } = state.attentionSet;
       return {

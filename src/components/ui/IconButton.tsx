@@ -25,30 +25,60 @@ export function IconButton({
   ...rest
 }: IconButtonProps) {
   const theme = useThemeStore((s) => s.current);
-  const { isHovered, handlers } = useInteraction({ disabled });
+  const { isHovered, isActive, handlers } = useInteraction({ disabled });
 
-  const dim = size === "sm" ? 28 : 32;
-  const effectiveColor = active || isHovered ? (hoverColor || theme.lavender) : theme.textMuted;
+  const dim = size === "sm" ? 30 : 34;
+  const tint = tintColor || theme.pink;
+  const effectiveColor =
+    active || isHovered ? (hoverColor || theme.pink) : theme.textMuted;
 
+  // --- Tinted: chunky candy icon button ---
+  // --- Ghost: minimal, just a gentle hover tint ---
   const baseStyles: React.CSSProperties =
     variant === "tinted"
       ? {
-          background: `${tintColor || theme.lavender}18`,
-          border: `1px solid ${tintColor || theme.lavender}33`,
-          color: disabled ? theme.textMuted : (tintColor || theme.lavender),
+          background: `${tint}18`,
+          border: `2px solid ${tint}44`,
+          color: disabled ? theme.textMuted : tint,
+          boxShadow: `2px 2px 0px ${tint}33`,
         }
       : {
           background: "none",
-          border: "none",
+          border: "2px solid transparent",
           color: disabled ? theme.textMuted : effectiveColor,
+          boxShadow: "none",
         };
 
-  const hoverStyles: React.CSSProperties =
-    isHovered && !disabled
-      ? variant === "tinted"
-        ? { background: `${tintColor || theme.lavender}30` }
-        : {}
-      : {};
+  const hoverStyles: React.CSSProperties = (() => {
+    if (!isHovered || disabled) return {};
+    if (variant === "tinted") {
+      return {
+        background: `${tint}30`,
+        transform: "translate(-1px, -1px)",
+        boxShadow: `3px 3px 0px ${tint}44`,
+      };
+    }
+    return {
+      background: theme.hoverOverlay,
+      color: hoverColor || theme.pink,
+    };
+  })();
+
+  const activeStyles: React.CSSProperties = (() => {
+    if (!isActive || disabled) return {};
+    if (variant === "tinted") {
+      return {
+        transform: "translate(1px, 1px)",
+        boxShadow: `0px 0px 0px ${tint}33`,
+      };
+    }
+    return { transform: "scale(0.92)" };
+  })();
+
+  const transition =
+    variant === "tinted"
+      ? `transform 0.15s ${theme.easeSpring}, box-shadow 0.15s ${theme.easeSpring}, background 0.12s ease`
+      : "background 0.12s ease, color 0.12s ease, transform 0.12s ease";
 
   return (
     <button
@@ -63,7 +93,7 @@ export function IconButton({
         minWidth: dim,
         minHeight: dim,
         padding: 0,
-        borderRadius: 8,
+        borderRadius: theme.borderRadiusSm,
         cursor: disabled ? "not-allowed" : "pointer",
         display: "inline-flex",
         alignItems: "center",
@@ -72,8 +102,11 @@ export function IconButton({
         fontSize: 11,
         fontWeight: 600,
         gap: 4,
+        transition,
+        userSelect: "none",
         ...baseStyles,
         ...hoverStyles,
+        ...activeStyles,
         ...style,
       }}
     >

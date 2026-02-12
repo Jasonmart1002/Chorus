@@ -36,10 +36,18 @@ export const useThemeStore = create<ThemeStore>()(
         }),
     }),
     {
-      name: "cc-theme",
+      name: "chorus-theme",
       partialize: (state) => ({ mode: state.mode }),
       merge: (persisted, current) => {
-        const p = persisted as { mode?: ThemeMode } | undefined;
+        // One-time migration from old key
+        const oldKey = "cc-theme";
+        const oldData = localStorage.getItem(oldKey);
+        if (oldData) {
+          localStorage.setItem("chorus-theme", oldData);
+          localStorage.removeItem(oldKey);
+        }
+
+        const p = (persisted ?? (oldData ? JSON.parse(oldData)?.state : undefined)) as { mode?: ThemeMode } | undefined;
         const mode = p?.mode || getInitialMode();
         applyBodyClass(mode);
         return { ...current, mode, current: themeFor(mode) };

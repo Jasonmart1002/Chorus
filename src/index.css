@@ -1,3 +1,9 @@
+/* ==========================================================================
+   Chorus -- Catppuccin Neobrutalist Global Styles
+   Chunky but cute. Latte (light) / Mocha (dark).
+   ========================================================================== */
+
+/* --- Reset ---------------------------------------------------------------- */
 * {
   margin: 0;
   padding: 0;
@@ -12,125 +18,228 @@ html, body, #root {
 }
 
 body {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: 'Nunito', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Scrollbar styling — light (Catppuccin Latte) */
+/* --- Scrollbar -- rounded, Catppuccin tinted ------------------------------ */
 ::-webkit-scrollbar {
   width: 6px;
+  height: 6px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #acb0be;
-  border-radius: 3px;
+  background: #9ca0b0;
+  border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #7287fd;
+  background: #ea76cb;
 }
 
-/* Scrollbar — dark (Catppuccin Mocha) */
+/* Scrollbar -- dark (Mocha) */
 body.theme-dark ::-webkit-scrollbar-thumb {
   background: #585b70;
 }
 body.theme-dark ::-webkit-scrollbar-thumb:hover {
-  background: #b4befe;
+  background: #f5c2e7;
 }
 
-/* Selection — light (Catppuccin Latte) */
+/* --- Selection -- pink tinted --------------------------------------------- */
 ::selection {
-  background: rgba(114, 135, 253, 0.3);
+  background: rgba(234, 118, 203, 0.28);
+  color: inherit;
 }
-
-/* Selection — dark (Catppuccin Mocha) */
 body.theme-dark ::selection {
-  background: rgba(180, 190, 254, 0.25);
+  background: rgba(245, 194, 231, 0.28);
+  color: inherit;
 }
 
-/* Universal transition base */
+/* --- Tab strip hidden scrollbar ------------------------------------------- */
+.tab-strip-scroll::-webkit-scrollbar {
+  display: none;
+}
+.tab-strip-scroll {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* --- Universal transitions for interactive elements ----------------------- */
 button, input, textarea, select {
   transition: background-color 0.15s ease, border-color 0.15s ease,
               color 0.15s ease, box-shadow 0.15s ease,
               opacity 0.15s ease, transform 0.1s ease, filter 0.1s ease;
 }
 
-/* Disabled state base */
+/* --- Disabled state ------------------------------------------------------- */
 button:disabled, input:disabled, textarea:disabled, select:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
-/* Pulse animation for working status */
+/* --- Focus rings -- pink, 3px, rounded ------------------------------------ */
+textarea:focus-visible,
+input:focus-visible,
+select:focus-visible,
+button:focus-visible {
+  outline: 3px solid rgba(234, 118, 203, 0.5);
+  outline-offset: 2px;
+  border-radius: 10px;
+}
+body.theme-dark textarea:focus-visible,
+body.theme-dark input:focus-visible,
+body.theme-dark select:focus-visible,
+body.theme-dark button:focus-visible {
+  outline-color: rgba(245, 194, 231, 0.5);
+}
+
+/* --- Placeholder -- muted, italic ----------------------------------------- */
+::placeholder {
+  color: #9ca0b0;
+  opacity: 0.75;
+  font-style: italic;
+}
+body.theme-dark ::placeholder {
+  color: #6c7086;
+  opacity: 0.75;
+  font-style: italic;
+}
+
+/* ==========================================================================
+   Keyframe Animations
+   ========================================================================== */
+
+/* Pulse -- working status */
 @keyframes pulse {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.7; }
 }
 
-/* Spin animation for loaders */
+/* Spin -- loaders */
 @keyframes spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
 }
 
-/* Spring in animation */
+/* Spring in -- spring overshoot entrance */
 @keyframes springIn {
   0% { transform: scale(0.9); opacity: 0; }
   70% { transform: scale(1.03); }
   100% { transform: scale(1); opacity: 1; }
 }
 
-/* Slide down animation */
+/* Slide down -- dropdown appearance */
 @keyframes slideDown {
   0% { transform: translateY(-8px); opacity: 0; }
   100% { transform: translateY(0); opacity: 1; }
 }
 
-/* Fade in animation */
+/* Fade in -- gentle entrance */
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(-4px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* Slide in from right (toast enter) */
+/* Slide in from right -- toast enter */
 @keyframes slideInRight {
   from { opacity: 0; transform: translateX(100%); }
   to { opacity: 1; transform: translateX(0); }
 }
 
-/* Slide out to right (toast exit) */
+/* Slide out to right -- toast exit */
 @keyframes slideOutRight {
   from { opacity: 1; transform: translateX(0); }
   to { opacity: 0; transform: translateX(100%); }
 }
 
-/* Focus ring — light (Catppuccin Latte Lavender) */
-textarea:focus-visible, input:focus-visible, select:focus-visible, button:focus-visible {
-  outline: 2px solid rgba(114, 135, 253, 0.5);
-  outline-offset: 2px;
+/* Bounce -- cute bounce for interactive elements */
+@keyframes bounce {
+  0%   { transform: translateY(0); }
+  25%  { transform: translateY(-6px); }
+  50%  { transform: translateY(0); }
+  65%  { transform: translateY(-3px); }
+  80%  { transform: translateY(0); }
+  90%  { transform: translateY(-1px); }
+  100% { transform: translateY(0); }
 }
 
-/* Focus ring — dark (Catppuccin Mocha Lavender) */
-body.theme-dark textarea:focus-visible, body.theme-dark input:focus-visible,
-body.theme-dark select:focus-visible, body.theme-dark button:focus-visible {
-  outline-color: rgba(180, 190, 254, 0.5);
+/* Wiggle -- subtle side-to-side for attention */
+@keyframes wiggle {
+  0%, 100% { transform: rotate(0deg); }
+  15%      { transform: rotate(-3deg); }
+  30%      { transform: rotate(2.5deg); }
+  45%      { transform: rotate(-2deg); }
+  60%      { transform: rotate(1.5deg); }
+  75%      { transform: rotate(-1deg); }
+  90%      { transform: rotate(0.5deg); }
 }
 
-/* Placeholder styling */
-::placeholder { color: #9ca0b0; opacity: 0.7; }
-body.theme-dark ::placeholder { color: #7f849c; opacity: 0.7; }
+/* Pop in -- scale 0 -> 1.05 -> 1 for appearing elements */
+@keyframes popIn {
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+  70% {
+    transform: scale(1.05);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
 
-/* Reduced motion support */
+/* ==========================================================================
+   Utility Classes -- Brutalist
+   ========================================================================== */
+
+/* Chunky hard shadow -- Latte: Overlay0, Mocha: Crust */
+.brutalist-shadow {
+  box-shadow: 4px 4px 0px #9ca0b0;
+}
+body.theme-dark .brutalist-shadow {
+  box-shadow: 4px 4px 0px #11111b;
+}
+
+/* Lift on hover */
+.brutalist-hover {
+  transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1),
+              box-shadow 0.15s ease;
+}
+.brutalist-hover:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 6px 6px 0px #9ca0b0;
+}
+body.theme-dark .brutalist-hover:hover {
+  box-shadow: 6px 6px 0px #11111b;
+}
+
+/* Push on press */
+.brutalist-press:active {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0px #9ca0b0;
+}
+body.theme-dark .brutalist-press:active {
+  box-shadow: 1px 1px 0px #11111b;
+}
+
+/* ==========================================================================
+   Reduced motion support
+   ========================================================================== */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
 }
 
-/* Prevent text selection on drag regions */
+/* ==========================================================================
+   Tauri drag region -- prevent text selection
+   ========================================================================== */
 [data-tauri-drag-region] {
   -webkit-user-select: none;
   user-select: none;

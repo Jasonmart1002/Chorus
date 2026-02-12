@@ -1,10 +1,14 @@
-export const STATUS_COLORS: Record<string, string> = {
-  idle: "#9ca0b0",
-  working: "#df8e1d",
-  awaiting_input: "#40a02b",
-  errored: "#d20f39",
-  exited: "#9ca0b0",
-};
+import type { ThemeColors } from "./theme";
+
+export function getStatusColors(theme: ThemeColors): Record<string, string> {
+  return {
+    idle: theme.statusIdle,
+    working: theme.statusWorking,
+    awaiting_input: theme.statusReady,
+    errored: theme.statusError,
+    exited: theme.statusIdle,
+  };
+}
 
 export const STATUS_LABELS: Record<string, string> = {
   idle: "Idle",

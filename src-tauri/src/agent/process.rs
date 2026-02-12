@@ -139,14 +139,15 @@ impl AgentProcess {
 
         let mut child = cmd.spawn().map_err(|e| format!("Failed to spawn claude: {}", e))?;
 
-        // Track PID for reliable cleanup on app exit
-        if let Some(pid) = child.id() {
-            register_pid(pid);
-        }
-
         let stdout = child.stdout.take().ok_or("Failed to capture stdout")?;
         let stderr = child.stderr.take().ok_or("Failed to capture stderr")?;
         let stdin = child.stdin.take().ok_or("Failed to capture stdin")?;
+
+        // Track PID for reliable cleanup on app exit (after .take() calls so
+        // we don't leave a stale PID in the registry if take() fails)
+        if let Some(pid) = child.id() {
+            register_pid(pid);
+        }
 
         // Stdin writer task
         let (stdin_tx, mut stdin_rx) = mpsc::channel::<String>(32);

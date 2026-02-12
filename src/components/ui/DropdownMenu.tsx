@@ -95,8 +95,8 @@ export function DropdownMenu({
     position: "absolute",
     [align === "end" ? "right" : "left"]: 0,
     ...(flippedSide === "bottom"
-      ? { top: "100%", marginTop: 4 }
-      : { bottom: "100%", marginBottom: 4 }),
+      ? { top: "100%", marginTop: 6 }
+      : { bottom: "100%", marginBottom: 6 }),
   };
 
   return (
@@ -109,10 +109,10 @@ export function DropdownMenu({
           onKeyDown={handleMenuKeyDown}
           style={{
             ...positionStyle,
-            background: theme.bgCard,
-            border: `1px solid ${theme.borderColor}`,
-            borderRadius: 8,
-            padding: 4,
+            background: theme.bgSurface,
+            border: `2px solid ${theme.borderStrong}`,
+            borderRadius: theme.borderRadiusSm,
+            padding: 5,
             minWidth: 180,
             boxShadow: theme.shadowDialog,
             zIndex: 60,
@@ -150,25 +150,38 @@ export function DropdownMenuItem({
       {...handlers}
       style={{
         width: "100%",
-        padding: "8px 12px",
+        padding: "9px 14px",
         background: active
-          ? theme.lavenderLight
+          ? theme.pinkLight
           : isHovered
-          ? theme.lavenderLight
+          ? theme.pinkLight
           : "transparent",
         border: "none",
-        borderRadius: 8,
+        borderRadius: theme.borderRadiusSm,
         cursor: "pointer",
         textAlign: "left",
         fontSize: 12,
+        fontWeight: 600,
+        fontFamily: theme.fontBody,
         color: theme.textPrimary,
         display: "flex",
         alignItems: "center",
-        gap: 8,
+        gap: 10,
         outline: "none",
+        transition: "background 0.12s ease",
       }}
     >
-      {icon}
+      {icon && (
+        <span
+          style={{
+            display: "flex",
+            color: active || isHovered ? theme.pink : theme.textMuted,
+            transition: "color 0.12s ease",
+          }}
+        >
+          {icon}
+        </span>
+      )}
       {children}
     </button>
   );
