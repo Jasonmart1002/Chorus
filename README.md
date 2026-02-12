@@ -15,9 +15,9 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/Jasonmart1002/CC-Manager/releases"><img alt="Latest Release" src="https://img.shields.io/github/v/release/Jasonmart1002/CC-Manager?style=flat-square&color=7c3aed" /></a>
-  <a href="https://github.com/Jasonmart1002/CC-Manager/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/github/license/Jasonmart1002/CC-Manager?style=flat-square&color=7c3aed" /></a>
-  <a href="https://github.com/Jasonmart1002/CC-Manager/stargazers"><img alt="Stars" src="https://img.shields.io/github/stars/Jasonmart1002/CC-Manager?style=flat-square&color=7c3aed" /></a>
+  <a href="https://github.com/Jasonmart1002/Chorus/releases"><img alt="Latest Release" src="https://img.shields.io/github/v/release/Jasonmart1002/Chorus?style=flat-square&color=7c3aed" /></a>
+  <a href="https://github.com/Jasonmart1002/Chorus/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/github/license/Jasonmart1002/Chorus?style=flat-square&color=7c3aed" /></a>
+  <a href="https://github.com/Jasonmart1002/Chorus/stargazers"><img alt="Stars" src="https://img.shields.io/github/stars/Jasonmart1002/Chorus?style=flat-square&color=7c3aed" /></a>
   <img alt="Platform" src="https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-7c3aed?style=flat-square" />
 </p>
 
@@ -75,7 +75,7 @@ Beautiful **Catppuccin**-inspired palettes with warm pastels, soft gradients, an
 ### From Source
 
 ```bash
-git clone https://github.com/Jasonmart1002/CC-Manager.git
+git clone https://github.com/Jasonmart1002/Chorus.git
 cd CC-Manager
 npm install
 npm run tauri build
@@ -83,11 +83,9 @@ npm run tauri build
 
 The built app will be in `src-tauri/target/release/bundle/`.
 
-<!--
 ### Download
 
-Pre-built binaries for macOS, Windows, and Linux are available on the [Releases page](https://github.com/Jasonmart1002/CC-Manager/releases).
--->
+Grab the latest `.dmg` from the [Releases page](https://github.com/Jasonmart1002/Chorus/releases/latest).
 
 ---
 
