@@ -69,8 +69,7 @@ export function Sidebar({ onNewAgent }: Props) {
   const filteredActive = sortAgents(
     allAgents.filter((a) => matchesSearch(a) && matchesStatus(a) && !getPrefs(a.id).archived),
     getPrefs,
-    manualOrder,
-    attentionSet
+    manualOrder
   );
 
   // Keep manual order in sync

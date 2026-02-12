@@ -35,12 +35,10 @@ export function Layout() {
         const idx = parseInt(e.key) - 1;
         const sidebarState = useSidebarStore.getState();
         const getPrefs = sidebarState.getPrefs;
-        const attentionSet = useAgentStore.getState().attentionSet;
         const visibleAgents = sortAgents(
           Object.values(agents).filter((a) => !getPrefs(a.id).archived),
           getPrefs,
-          sidebarState.manualOrder,
-          attentionSet
+          sidebarState.manualOrder
         );
         if (idx < visibleAgents.length) {
           selectAgent(visibleAgents[idx].id);

@@ -6,8 +6,7 @@ const DEFAULT_PREFS: AgentPrefs = { pinned: false, archived: false, displayName:
 export function sortAgents(
   agents: Agent[],
   getPrefs: (agentId: string) => AgentPrefs,
-  manualOrder?: string[],
-  attentionSet?: Record<string, boolean>
+  manualOrder?: string[]
 ): Agent[] {
   return [...agents].sort((a, b) => {
     const aPrefs = getPrefs(a.id) || DEFAULT_PREFS;
@@ -16,14 +15,6 @@ export function sortAgents(
     // Pinned first
     if (aPrefs.pinned && !bPrefs.pinned) return -1;
     if (!aPrefs.pinned && bPrefs.pinned) return 1;
-
-    // Within same pin group, attention agents float up
-    if (attentionSet) {
-      const aAtt = !!attentionSet[a.id];
-      const bAtt = !!attentionSet[b.id];
-      if (aAtt && !bAtt) return -1;
-      if (!aAtt && bAtt) return 1;
-    }
 
     // Within same pin group, sort by manual order if provided
     if (manualOrder && manualOrder.length > 0) {

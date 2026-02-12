@@ -33,6 +33,29 @@ Chorus puts every agent in **one window**. Create agents, assign them to project
 
 ---
 
+<p align="center">
+  <img src="screenshots/dark-overview.png" alt="Chorus — Dark Mode" width="800" />
+</p>
+
+<p align="center">
+  <img src="screenshots/light-overview.png" alt="Chorus — Light Mode" width="800" />
+</p>
+
+<details>
+<summary><strong>More screenshots</strong></summary>
+
+| Git Quick Actions | Run Commands | New Agent |
+|:-:|:-:|:-:|
+| ![Git menu](screenshots/git-menu-dark.png) | ![Run dialog](screenshots/run-command-dark.png) | ![New agent](screenshots/new-agent-dark.png) |
+
+| Diff Viewer | Light Theme |
+|:-:|:-:|
+| ![Diff viewer](screenshots/diff-viewer.png) | ![Light new agent](screenshots/new-agent-light.png) |
+
+</details>
+
+---
+
 ## Features
 
 ### Multi-Agent Management
@@ -76,7 +99,7 @@ Beautiful **Catppuccin**-inspired palettes with warm pastels, soft gradients, an
 
 ```bash
 git clone https://github.com/Jasonmart1002/Chorus.git
-cd CC-Manager
+cd Chorus
 npm install
 npm run tauri build
 ```
