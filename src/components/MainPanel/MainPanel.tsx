@@ -1,11 +1,21 @@
 import { useAgentStore } from "../../store/agentStore";
 import { useThemeStore } from "../../store/themeStore";
 import { AgentView } from "./AgentView";
+import { VibeMode } from "./VibeMode";
 import { Bot } from "lucide-react";
 
 export function MainPanel() {
   const selectedAgentId = useAgentStore((s) => s.selectedAgentId);
+  const vibeMode = useAgentStore((s) => s.vibeMode);
   const theme = useThemeStore((s) => s.current);
+
+  if (vibeMode) {
+    return (
+      <div style={{ flex: 1, height: "100%", minWidth: 0, overflow: "hidden" }}>
+        <VibeMode />
+      </div>
+    );
+  }
 
   if (!selectedAgentId) {
     return (

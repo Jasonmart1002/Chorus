@@ -30,7 +30,16 @@ interface AgentStore {
   commandStates: Record<string, CommandState>;
   savedCommands: Record<string, string>; // cwd → last command
 
+  // Vibe mode
+  vibeMode: boolean;
+  vibeCurrentId: string | null;
+  attentionTimestamps: Record<string, number>; // agent_id → Date.now() when entered queue
+
+  // Pending action (triggered by global shortcuts, consumed by ContextSummary)
+  pendingAction: 'git' | 'terminal' | 'run' | null;
+
   // Actions
+  clearPendingAction: () => void;
   init: () => Promise<void>;
   createAgent: (
     name: string,
@@ -43,6 +52,9 @@ interface AgentStore {
   killAgent: (agentId: string) => Promise<void>;
   removeAgent: (agentId: string) => Promise<void>;
   selectAgent: (agentId: string | null) => void;
+  toggleVibeMode: () => void;
+  setVibeMode: (on: boolean) => void;
+  vibeSkip: () => void;
   startCommand: (
     cwd: string,
     command: string,
@@ -54,6 +66,18 @@ interface AgentStore {
   openClaudeTerminal: (cwd: string, sessionId: string) => Promise<void>;
 }
 
+/** Find the next awaiting_input agent by oldest attention timestamp, excluding `excludeId` */
+function nextVibeAgent(
+  attentionSet: Record<string, boolean>,
+  attentionTimestamps: Record<string, number>,
+  excludeId?: string
+): string | null {
+  const ids = Object.keys(attentionSet).filter((id) => id !== excludeId);
+  if (ids.length === 0) return null;
+  ids.sort((a, b) => (attentionTimestamps[a] || 0) - (attentionTimestamps[b] || 0));
+  return ids[0];
+}
+
 export const useAgentStore = create<AgentStore>((set, get) => ({
   agents: {},
   messages: {},
@@ -62,6 +86,12 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
   initialized: false,
   commandStates: {},
   savedCommands: {},
+  vibeMode: false,
+  vibeCurrentId: null,
+  attentionTimestamps: {},
+  pendingAction: null,
+
+  clearPendingAction: () => set({ pendingAction: null }),
 
   init: async () => {
     if (get().initialized) return;
@@ -106,7 +136,7 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
       set((state) => {
         const agent = state.agents[agent_id];
         if (!agent) return state;
-        return {
+        const updates: Partial<AgentStore> = {
           agents: {
             ...state.agents,
             [agent_id]: {
@@ -115,15 +145,39 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
             },
           },
         };
+        // Vibe mode: if the current agent is no longer awaiting input, advance
+        if (
+          state.vibeMode &&
+          state.vibeCurrentId === agent_id &&
+          status !== "awaiting_input"
+        ) {
+          updates.vibeCurrentId = nextVibeAgent(
+            state.attentionSet,
+            state.attentionTimestamps,
+            agent_id
+          );
+        }
+        return updates;
       });
     });
 
     // Listen for attention events (agent needs user input or errored)
     await listen<AttentionEvent>("agent-entered-queue", (event) => {
       const { agent_id } = event.payload;
-      set((state) => ({
-        attentionSet: { ...state.attentionSet, [agent_id]: true },
-      }));
+      set((state) => {
+        const updates: Partial<AgentStore> = {
+          attentionSet: { ...state.attentionSet, [agent_id]: true },
+          attentionTimestamps: {
+            ...state.attentionTimestamps,
+            [agent_id]: Date.now(),
+          },
+        };
+        // Vibe mode: auto-navigate from waiting screen
+        if (state.vibeMode && state.vibeCurrentId === null) {
+          updates.vibeCurrentId = agent_id;
+        }
+        return updates;
+      });
     });
 
     // Listen for streaming command output
@@ -214,13 +268,23 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
     const userMsg: SDKMessage = { type: "user_prompt" as const, text, timestamp: Date.now() };
     set((state) => {
       const { [agentId]: _, ...restAttention } = state.attentionSet;
-      return {
+      const { [agentId]: _ts, ...restTimestamps } = state.attentionTimestamps;
+      const updates: Partial<AgentStore> = {
         messages: {
           ...state.messages,
           [agentId]: [...(state.messages[agentId] || []), userMsg],
         },
         attentionSet: restAttention,
+        attentionTimestamps: restTimestamps,
       };
+      // Vibe mode: advance to next waiting agent
+      if (state.vibeMode) {
+        updates.vibeCurrentId = nextVibeAgent(
+          restAttention,
+          restTimestamps
+        );
+      }
+      return updates;
     });
     try {
       await invoke("send_prompt", { agentId, text });
@@ -245,13 +309,23 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
       const { [agentId]: _removed, ...remainingAgents } = state.agents;
       const { [agentId]: _removedMsgs, ...remainingMessages } = state.messages;
       const { [agentId]: _removedAttn, ...remainingAttention } = state.attentionSet;
-      return {
+      const { [agentId]: _removedTs, ...remainingTimestamps } = state.attentionTimestamps;
+      const updates: Partial<AgentStore> = {
         agents: remainingAgents,
         messages: remainingMessages,
         attentionSet: remainingAttention,
+        attentionTimestamps: remainingTimestamps,
         selectedAgentId:
           state.selectedAgentId === agentId ? null : state.selectedAgentId,
       };
+      // Vibe mode: advance if removed agent was current
+      if (state.vibeMode && state.vibeCurrentId === agentId) {
+        updates.vibeCurrentId = nextVibeAgent(
+          remainingAttention,
+          remainingTimestamps
+        );
+      }
+      return updates;
     });
     toast.info("Agent removed");
   },
@@ -263,6 +337,43 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
         return { selectedAgentId: agentId, attentionSet: restAttention };
       }
       return { selectedAgentId: agentId };
+    });
+  },
+
+  toggleVibeMode: () => {
+    const state = get();
+    if (state.vibeMode) {
+      set({ vibeMode: false, vibeCurrentId: null });
+    } else {
+      const first = nextVibeAgent(state.attentionSet, state.attentionTimestamps);
+      set({ vibeMode: true, vibeCurrentId: first });
+    }
+  },
+
+  setVibeMode: (on) => {
+    if (on) {
+      const state = get();
+      const first = nextVibeAgent(state.attentionSet, state.attentionTimestamps);
+      set({ vibeMode: true, vibeCurrentId: first });
+    } else {
+      set({ vibeMode: false, vibeCurrentId: null });
+    }
+  },
+
+  vibeSkip: () => {
+    const state = get();
+    if (!state.vibeMode || !state.vibeCurrentId) return;
+    const skippedId = state.vibeCurrentId;
+    // Push skipped agent to back of queue by giving it the newest timestamp
+    const updatedTimestamps = {
+      ...state.attentionTimestamps,
+      [skippedId]: Date.now(),
+    };
+    const next = nextVibeAgent(state.attentionSet, updatedTimestamps, skippedId);
+    set({
+      attentionTimestamps: updatedTimestamps,
+      // If there's another agent, go to it; otherwise stay on this one (only one in queue)
+      vibeCurrentId: next ?? skippedId,
     });
   },
 

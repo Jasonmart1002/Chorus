@@ -5,6 +5,7 @@ import { useThemeStore } from "../../store/themeStore";
 interface DialogProps {
   open: boolean;
   onClose: () => void;
+  onSubmit?: () => void;
   title: string;
   description?: string;
   width?: number;
@@ -18,6 +19,7 @@ const FOCUSABLE_SELECTOR =
 export function Dialog({
   open,
   onClose,
+  onSubmit,
   title,
   description,
   width = 420,
@@ -54,6 +56,11 @@ export function Dialog({
         onClose();
         return;
       }
+      if ((e.metaKey || e.ctrlKey) && e.key === "Enter" && onSubmit) {
+        e.preventDefault();
+        onSubmit();
+        return;
+      }
       if (e.key === "Tab" && panelRef.current) {
         const focusable = Array.from(
           panelRef.current.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)
@@ -76,7 +83,7 @@ export function Dialog({
         }
       }
     },
-    [onClose]
+    [onClose, onSubmit]
   );
 
   if (!open) return null;

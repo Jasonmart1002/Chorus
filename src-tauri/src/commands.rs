@@ -213,9 +213,9 @@ pub async fn run_command(
         return Err(format!("Directory does not exist: {}", cwd));
     }
 
-    let mut cmd = tokio::process::Command::new("sh");
-    cmd.arg("-c")
-        .arg(&command)
+    let shell = std::env::var("SHELL").unwrap_or_else(|_| "sh".to_string());
+    let mut cmd = tokio::process::Command::new(&shell);
+    cmd.args(&["-lc", &command])
         .current_dir(&cwd)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());

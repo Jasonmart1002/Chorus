@@ -103,6 +103,7 @@ export function RunDialog({ cwd, onClose }: Props) {
     <Dialog
       open={true}
       onClose={onClose}
+      onSubmit={isRunning ? handleStop : handleRun}
       title="Run"
       description={`Run commands in ${dirName}`}
       width={520}

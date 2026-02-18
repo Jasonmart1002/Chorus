@@ -226,6 +226,37 @@ body.theme-dark .brutalist-press:active {
   box-shadow: 1px 1px 0px #11111b;
 }
 
+/* Vibe mode -- slide in from right */
+@keyframes vibeSlideIn {
+  0% { transform: translateX(40px); opacity: 0; }
+  100% { transform: translateX(0); opacity: 1; }
+}
+
+/* Vibe mode -- slide out to left */
+@keyframes vibeSlideOut {
+  0% { transform: translateX(0); opacity: 1; }
+  100% { transform: translateX(-40px); opacity: 0; }
+}
+
+/* Vibe mode -- pulsing glow ring */
+@keyframes vibeGlow {
+  0%, 100% { box-shadow: 0 0 0 0 var(--glow-color, #a6e3a1); }
+  50% { box-shadow: 0 0 16px 4px var(--glow-color, #a6e3a1); }
+}
+
+/* Vibe mode -- node highlight pulse */
+@keyframes vibeNodeHighlight {
+  0% { transform: scale(1); filter: brightness(1); }
+  50% { transform: scale(1.08); filter: brightness(1.25); }
+  100% { transform: scale(1); filter: brightness(1); }
+}
+
+/* Vibe mode -- equalizer bars */
+@keyframes equalizerBounce {
+  0%, 100% { transform: scaleY(0.3); }
+  50% { transform: scaleY(1); }
+}
+
 /* ==========================================================================
    Reduced motion support
    ========================================================================== */

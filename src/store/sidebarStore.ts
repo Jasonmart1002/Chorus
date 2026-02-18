@@ -16,6 +16,7 @@ interface SidebarStore {
   showArchived: boolean;
   manualOrder: string[];
   searchOpen: boolean;
+  focusSearchCounter: number;
 
   togglePin: (agentId: string) => void;
   toggleArchive: (agentId: string) => void;
@@ -28,6 +29,7 @@ interface SidebarStore {
   getPrefs: (agentId: string) => AgentPrefs;
   setManualOrder: (order: string[]) => void;
   moveAgent: (fromId: string, toId: string) => void;
+  triggerFocusSearch: () => void;
 }
 
 const DEFAULT_PREFS: AgentPrefs = { pinned: false, archived: false, displayName: null };
@@ -41,6 +43,7 @@ export const useSidebarStore = create<SidebarStore>()(
       showArchived: false,
       manualOrder: [],
       searchOpen: false,
+      focusSearchCounter: 0,
 
       togglePin: (agentId) =>
         set((state) => {
@@ -94,6 +97,9 @@ export const useSidebarStore = create<SidebarStore>()(
       },
 
       setManualOrder: (order) => set({ manualOrder: order }),
+
+      triggerFocusSearch: () =>
+        set((state) => ({ focusSearchCounter: state.focusSearchCounter + 1 })),
 
       moveAgent: (fromId, toId) =>
         set((state) => {

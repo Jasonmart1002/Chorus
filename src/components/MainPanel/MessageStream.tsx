@@ -168,7 +168,13 @@ export function MessageStream({ messages, agentId }: Props) {
   const theme = useThemeStore((s) => s.current);
   const prevLenRef = useRef(messages.length);
 
-  // Only auto-scroll when new messages arrive (not on initial mount from tab switch)
+  // Scroll to bottom when switching agents
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "instant" });
+    prevLenRef.current = messages.length;
+  }, [agentId]);
+
+  // Smooth scroll when new messages arrive
   useEffect(() => {
     if (messages.length > prevLenRef.current) {
       bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -304,7 +310,6 @@ function UserPromptBubble({ text }: { text: string }) {
             You
           </span>
           <span style={{ fontSize: 10, color: theme.pink, opacity: 0.6 }}>
-            &hearts;
           </span>
         </div>
 

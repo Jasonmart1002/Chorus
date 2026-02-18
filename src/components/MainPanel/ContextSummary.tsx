@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Cpu, RotateCw, Folder, Play, Loader, GitBranch, ChevronDown, TerminalSquare } from "lucide-react";
 import type { Agent } from "../../types/agent";
 import { getStatusColors, STATUS_LABELS } from "../../lib/constants";
@@ -52,9 +52,20 @@ export function ContextSummary({ agent }: Props) {
   const sendPrompt = useAgentStore((s) => s.sendPrompt);
   const openTerminal = useAgentStore((s) => s.openTerminal);
   const openClaudeTerminal = useAgentStore((s) => s.openClaudeTerminal);
+  const pendingAction = useAgentStore((s) => s.pendingAction);
+  const clearPendingAction = useAgentStore((s) => s.clearPendingAction);
   const isRunning = commandState?.running === true;
 
   const canSend = agent.status === "awaiting_input" || agent.status === "idle";
+
+  // React to global keyboard shortcut actions
+  useEffect(() => {
+    if (!pendingAction) return;
+    if (pendingAction === 'git') setShowGitMenu(true);
+    else if (pendingAction === 'terminal') setShowTermMenu(true);
+    else if (pendingAction === 'run') setShowRun(true);
+    clearPendingAction();
+  }, [pendingAction, clearPendingAction]);
 
   const handleGitAction = async (prompt: string) => {
     setShowGitMenu(false);

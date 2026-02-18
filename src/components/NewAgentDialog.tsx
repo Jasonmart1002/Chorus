@@ -53,6 +53,7 @@ export function NewAgentDialog({ onClose }: Props) {
     <Dialog
       open={true}
       onClose={onClose}
+      onSubmit={handleCreate}
       title="New Agent"
       footer={
         <>
