@@ -5,6 +5,13 @@ export interface SystemInitMessage {
   tools: string[];
 }
 
+export interface SystemGenericMessage {
+  type: "system";
+  subtype: string;
+  session_id?: string;
+  [key: string]: unknown;
+}
+
 export interface AssistantMessage {
   type: "assistant";
   message: {
@@ -51,7 +58,7 @@ export interface UserPromptMessage {
   timestamp: number;
 }
 
-export type SDKMessage = SystemInitMessage | AssistantMessage | ResultMessage | UserPromptMessage;
+export type SDKMessage = SystemInitMessage | SystemGenericMessage | AssistantMessage | ResultMessage | UserPromptMessage;
 
 export interface AgentMessageEvent {
   agent_id: string;

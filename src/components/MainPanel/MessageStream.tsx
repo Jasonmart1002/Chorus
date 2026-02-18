@@ -14,6 +14,7 @@ import {
   Search,
   FolderSearch,
   ListTodo,
+  Layers,
 } from "lucide-react";
 import type { SDKMessage, ResultMessage, ContentBlock, ToolUseBlock } from "../../types/messages";
 import { useAgentStore } from "../../store/agentStore";
@@ -71,6 +72,7 @@ type RenderItem =
   | { kind: "result"; message: ResultMessage }
   | { kind: "user_prompt"; text: string }
   | { kind: "system_init" }
+  | { kind: "context_compact" }
   | { kind: "ask_user"; block: ToolUseBlock }
   | { kind: "plan"; block: ToolUseBlock };
 
@@ -78,8 +80,22 @@ type RenderItem =
 // Message filtering & flattening
 // ---------------------------------------------------------------------------
 
+function isCompactMessage(msg: SDKMessage): boolean {
+  if (msg.type !== "system") return false;
+  const subtype = (msg as { subtype?: string }).subtype || "";
+  // Claude Code signals compaction via system messages with compact-related subtypes
+  // or SessionStart with source: "compact"
+  if (subtype.toLowerCase().includes("compact")) return true;
+  if (
+    subtype.toLowerCase().includes("session") &&
+    (msg as Record<string, unknown>).source === "compact"
+  )
+    return true;
+  return false;
+}
+
 function shouldHideMessage(msg: SDKMessage): boolean {
-  if (msg.type === "system" && msg.subtype?.startsWith("hook_")) return true;
+  if (msg.type === "system" && !isCompactMessage(msg) && (msg as { subtype?: string }).subtype?.startsWith("hook_")) return true;
   return false;
 }
 
@@ -96,6 +112,8 @@ function flattenMessages(messages: SDKMessage[]): RenderItem[] {
         if (msg.subtype === "init" && !seenInit) {
           seenInit = true;
           items.push({ kind: "system_init" });
+        } else if (isCompactMessage(msg)) {
+          items.push({ kind: "context_compact" });
         }
         break;
       case "assistant": {
@@ -251,6 +269,8 @@ function RenderItemView({ item, agentId }: { item: RenderItem; agentId: string }
       return <UserPromptBubble text={item.text} />;
     case "system_init":
       return <SystemInitPill />;
+    case "context_compact":
+      return <ContextCompactPill />;
     case "text":
       return <AssistantText text={item.text} />;
     case "tool_use":
@@ -366,6 +386,61 @@ function SystemInitPill() {
         <span>Session started</span>
         <span style={{ fontSize: 12 }}>&#10024;</span>
       </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Context Compacted — centered divider pill
+// ---------------------------------------------------------------------------
+
+function ContextCompactPill() {
+  const theme = useThemeStore((s) => s.current);
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 12,
+        padding: "8px 0",
+        userSelect: "none",
+      }}
+    >
+      <div
+        style={{
+          flex: 1,
+          height: 1,
+          background: theme.lavender,
+          opacity: 0.3,
+        }}
+      />
+      <div
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 6,
+          padding: "4px 14px",
+          borderRadius: theme.borderRadiusFull,
+          background: theme.bgCard,
+          border: `1px solid ${theme.lavender}40`,
+          fontSize: 11,
+          color: theme.lavender,
+          fontFamily: theme.fontBody,
+          fontWeight: 600,
+        }}
+      >
+        <Layers size={11} strokeWidth={2.5} />
+        <span>Context compacted</span>
+      </div>
+      <div
+        style={{
+          flex: 1,
+          height: 1,
+          background: theme.lavender,
+          opacity: 0.3,
+        }}
+      />
     </div>
   );
 }

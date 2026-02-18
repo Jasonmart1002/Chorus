@@ -107,6 +107,19 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
         },
       }));
 
+      // Notify on context compaction
+      if (message.type === "system") {
+        const subtype = (message as { subtype?: string }).subtype || "";
+        const source = (message as Record<string, unknown>).source;
+        const isCompact =
+          subtype.toLowerCase().includes("compact") ||
+          (subtype.toLowerCase().includes("session") && source === "compact");
+        if (isCompact) {
+          const agentName = get().agents[agent_id]?.config.name || "Agent";
+          toast.info(`${agentName}: context compacted`);
+        }
+      }
+
       // Update cost/turns from result messages
       if (message.type === "result") {
         const costUsd = message.total_cost_usd;
