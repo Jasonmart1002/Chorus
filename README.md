@@ -3,15 +3,17 @@
 </p>
 
 <p align="center">
-  <strong>A native desktop app for running multiple Claude Code agents in parallel.</strong>
+  <strong>A native desktop app for running multiple Claude Code agents in parallel.</strong><br />
+  <em>many voices, one stage</em>
 </p>
 
 <p align="center">
   <a href="#features">Features</a> &bull;
   <a href="#installation">Installation</a> &bull;
   <a href="#usage">Usage</a> &bull;
-  <a href="#development">Development</a> &bull;
-  <a href="#architecture">Architecture</a>
+  <a href="#keyboard-shortcuts">Shortcuts</a> &bull;
+  <a href="#architecture">Architecture</a> &bull;
+  <a href="#development">Development</a>
 </p>
 
 <p align="center">
@@ -59,16 +61,19 @@ Chorus puts every agent in **one window**. Create agents, assign them to project
 ## Features
 
 ### Multi-Agent Management
-Create as many agents as you need. Each gets its own Claude Code process, scoped to a specific project directory, with an independent conversation and session history.
+Create as many agents as you need. Each gets its own Claude Code process, scoped to a specific project directory, with an independent conversation and session history. Choose models and permission modes per agent.
 
 ### Real-Time Streaming
 Every agent streams its output live — text responses, tool calls, results — rendered with full **Markdown** and **syntax highlighting**. No polling, no refresh.
+
+### Vibe Mode
+A focused workflow for handling multiple agents that need attention. Toggle it with `Shift+Cmd+V` and Chorus auto-navigates through agents waiting for input, one at a time. See what each agent last worked on, respond, and move to the next — like a review queue for your agents.
 
 ### Git Quick Actions
 Built-in shortcuts for the most common Git workflows: **view diffs** (unstaged, staged, or vs. main), **commit**, **create PRs**, **push**, and **stash** — all without leaving the app.
 
 ### Run Shell Commands
-Execute arbitrary commands in any agent's working directory with live stdout/stderr streaming. Includes presets for npm, yarn, pnpm, and bun.
+Execute arbitrary commands in any agent's working directory with live stdout/stderr streaming. Includes presets for npm, yarn, pnpm, and bun. Command history is saved per directory.
 
 ### Terminal Handoff
 Need to go deeper? Open a native terminal at any agent's directory, or launch an interactive `claude --resume` session that picks up exactly where the agent left off.
@@ -77,13 +82,13 @@ Need to go deeper? Open a native terminal at any agent's directory, or launch an
 **Pin** important agents to the top. **Archive** ones you're done with. **Rename** them. **Drag-and-drop** to reorder. **Filter** by status — active, needs attention, or show all. **Search** by name or path.
 
 ### Notifications
-In-app banners and **OS-native notifications** when any agent completes or errors. Never miss a result.
+In-app toasts and **OS-native notifications** when any agent completes or errors. Never miss a result.
 
 ### Light & Dark Themes
-Beautiful **Catppuccin**-inspired palettes with warm pastels, soft gradients, and a playful chunky design. Persists across sessions.
+Beautiful **Catppuccin**-inspired palettes (Latte & Mocha) with warm pastels, soft gradients, and a playful chunky design. Toggle with `Shift+Cmd+T`. Persists across sessions.
 
 ### Keyboard-First
-`Cmd+N` to create, `Cmd+1`–`9` to switch agents, `Cmd+Enter` to send, `Shift+Tab` to toggle plan mode. Everything important has a shortcut.
+Every important action has a shortcut. See the full list in the [Keyboard Shortcuts](#keyboard-shortcuts) section below, or press `Cmd+/` in the app.
 
 ---
 
@@ -101,14 +106,14 @@ Beautiful **Catppuccin**-inspired palettes with warm pastels, soft gradients, an
 git clone https://github.com/Jasonmart1002/Chorus.git
 cd Chorus
 npm install
-npm run tauri build
+npx tauri build
 ```
 
 The built app will be in `src-tauri/target/release/bundle/`.
 
 ### Download
 
-Grab the latest `.dmg` from the [Releases page](https://github.com/Jasonmart1002/Chorus/releases/latest).
+Grab the latest build from the [Releases page](https://github.com/Jasonmart1002/Chorus/releases/latest).
 
 ---
 
@@ -129,34 +134,29 @@ Send a prompt to one agent, switch to another with `Cmd+2`, send a different pro
 
 Toggle with `Shift+Tab` before sending. The agent will draft an implementation plan for your approval before writing any code.
 
+### Vibe Mode
+
+Press `Shift+Cmd+V` to enter Vibe Mode. Chorus queues up every agent that's waiting for input and presents them one at a time. Respond, skip, or let the queue guide your workflow. Great for managing 5+ agents at once.
+
 ### Stop & Resume
 
 Hit **Stop** to interrupt an agent mid-task. Chorus transparently restarts the process with the same session — the conversation history is preserved and the agent picks up right where it was.
 
 ---
 
-## Development
+## Keyboard Shortcuts
 
-```bash
-npm install
-npm run tauri dev
-```
-
-This starts Vite with HMR on `localhost:1420` and launches the Tauri window. Frontend changes hot-reload instantly; Rust changes trigger a recompile.
-
-### Project Structure
-
-```
-src/                    # React frontend
-  components/           # UI components
-  store/                # Zustand stores (agent, sidebar, theme, toast)
-  types/                # TypeScript type definitions
-  lib/                  # Theme, constants, utilities
-src-tauri/              # Rust backend
-  src/agent/            # Process spawning, state management
-  src/commands.rs       # Tauri IPC command handlers
-  src/tray/             # System tray integration
-```
+| Shortcut | Action |
+|----------|--------|
+| `Cmd+N` | New agent |
+| `Cmd+1` – `Cmd+9` | Switch to agent 1–9 |
+| `Cmd+Enter` | Send prompt |
+| `Shift+Tab` | Toggle plan mode |
+| `Shift+Cmd+V` | Toggle Vibe Mode |
+| `Shift+Cmd+T` | Toggle light/dark theme |
+| `Shift+Cmd+J` | Previous agent |
+| `Shift+Cmd+K` | Next agent |
+| `Cmd+/` | Show all shortcuts |
 
 ---
 
@@ -188,21 +188,51 @@ Each agent runs as a `claude -p --output-format stream-json` process. The Rust b
 |-------|-----------|
 | Frontend | React 19, TypeScript, Vite, Zustand |
 | Desktop | Tauri v2 (Rust) |
-| Styling | Catppuccin palettes, CSS-in-JS |
+| Styling | Catppuccin palettes, custom CSS |
 | AI Backend | Claude Code CLI (stream-json mode) |
-| Fonts | Space Mono, Inter, JetBrains Mono |
+| Fonts | Nunito, Space Grotesk, JetBrains Mono |
+
+---
+
+## Development
+
+```bash
+npm install
+npx tauri dev
+```
+
+This starts Vite with HMR on `localhost:1420` and launches the Tauri window. Frontend changes hot-reload instantly; Rust changes trigger a recompile.
+
+### Project Structure
+
+```
+src/                    # React frontend
+  components/           # UI components (sidebar, main panel, dialogs)
+  store/                # Zustand stores (agent, sidebar, theme, toast)
+  types/                # TypeScript type definitions
+  lib/                  # Theme palettes, constants, utilities
+  hooks/                # Custom React hooks
+src-tauri/              # Rust backend
+  src/agent/            # Process spawning, state management, PID registry
+  src/commands.rs       # Tauri IPC command handlers
+  src/tray/             # System tray integration
+```
 
 ---
 
 ## Contributing
 
-Contributions are welcome! Feel free to open issues for bugs or feature requests, or submit a pull request.
+Contributions are welcome! Here's how you can help:
+
+- **Bug reports** — [Open an issue](https://github.com/Jasonmart1002/Chorus/issues/new) with steps to reproduce
+- **Feature requests** — [Open an issue](https://github.com/Jasonmart1002/Chorus/issues/new) describing the use case
+- **Pull requests** — Fork the repo, create a branch, and submit a PR
 
 ---
 
 ## License
 
-[MIT](LICENSE)
+[MIT](LICENSE) — Jason Martinez
 
 ---
 

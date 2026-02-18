@@ -3,12 +3,23 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "Multi-agent Claude Code manager",
+  "description": "A native desktop app for running multiple Claude Code agents in parallel",
+  "author": "Jason Martinez",
   "license": "MIT",
+  "homepage": "https://github.com/Jasonmart1002/Chorus",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Jasonmart1002/CC-Manager"
+    "url": "https://github.com/Jasonmart1002/Chorus.git"
   },
+  "keywords": [
+    "claude",
+    "claude-code",
+    "ai-agents",
+    "multi-agent",
+    "tauri",
+    "desktop-app",
+    "developer-tools"
+  ],
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
