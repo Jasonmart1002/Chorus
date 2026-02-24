@@ -60,6 +60,9 @@ Chorus puts every agent in **one window**. Create agents, assign them to project
 
 ## Features
 
+### Cross-Platform
+Runs natively on **macOS**, **Windows**, and **Linux**. Platform-specific process management, terminal integration, and keyboard shortcuts are handled automatically — same experience everywhere.
+
 ### Multi-Agent Management
 Create as many agents as you need. Each gets its own Claude Code process, scoped to a specific project directory, with an independent conversation and session history. Choose models and permission modes per agent.
 
@@ -67,7 +70,7 @@ Create as many agents as you need. Each gets its own Claude Code process, scoped
 Every agent streams its output live — text responses, tool calls, results — rendered with full **Markdown** and **syntax highlighting**. No polling, no refresh.
 
 ### Vibe Mode
-A focused workflow for handling multiple agents that need attention. Toggle it with `Shift+Cmd+V` and Chorus auto-navigates through agents waiting for input, one at a time. See what each agent last worked on, respond, and move to the next — like a review queue for your agents.
+A focused workflow for handling multiple agents that need attention. Toggle it with `Shift+Cmd+V` (`Shift+Ctrl+V` on Windows/Linux) and Chorus auto-navigates through agents waiting for input, one at a time. See what each agent last worked on, respond, and move to the next — like a review queue for your agents.
 
 ### Git Quick Actions
 Built-in shortcuts for the most common Git workflows: **view diffs** (unstaged, staged, or vs. main), **commit**, **create PRs**, **push**, and **stash** — all without leaving the app.
@@ -85,10 +88,10 @@ Need to go deeper? Open a native terminal at any agent's directory, or launch an
 In-app toasts and **OS-native notifications** when any agent completes or errors. Never miss a result.
 
 ### Light & Dark Themes
-Beautiful **Catppuccin**-inspired palettes (Latte & Mocha) with warm pastels, soft gradients, and a playful chunky design. Toggle with `Shift+Cmd+T`. Persists across sessions.
+Beautiful **Catppuccin**-inspired palettes (Latte & Mocha) with warm pastels, soft gradients, and a playful chunky design. Toggle with `Shift+Cmd+T` (`Shift+Ctrl+T` on Windows/Linux). Persists across sessions.
 
 ### Keyboard-First
-Every important action has a shortcut. See the full list in the [Keyboard Shortcuts](#keyboard-shortcuts) section below, or press `Cmd+/` in the app.
+Every important action has a shortcut. See the full list in the [Keyboard Shortcuts](#keyboard-shortcuts) section below, or press `Cmd+K` (`Ctrl+K` on Windows/Linux) in the app.
 
 ---
 
@@ -121,14 +124,14 @@ Grab the latest build from the [Releases page](https://github.com/Jasonmart1002/
 
 ### Create an Agent
 
-1. Click **+ New Agent** or press `Cmd+N`
+1. Click **+ New Agent** or press `Cmd+N` (`Ctrl+N`)
 2. Enter a name and select a working directory
 3. Optionally choose a model and permission mode
 4. The agent spawns immediately and is ready for prompts
 
 ### Work in Parallel
 
-Send a prompt to one agent, switch to another with `Cmd+2`, send a different prompt. Both run simultaneously. The sidebar shows live status for every agent — green for working, yellow for waiting, red for errors.
+Send a prompt to one agent, switch to another with `Cmd+2` (`Ctrl+2`), send a different prompt. Both run simultaneously. The sidebar shows live status for every agent — green for working, yellow for waiting, red for errors.
 
 ### Plan Mode
 
@@ -136,7 +139,7 @@ Toggle with `Shift+Tab` before sending. The agent will draft an implementation p
 
 ### Vibe Mode
 
-Press `Shift+Cmd+V` to enter Vibe Mode. Chorus queues up every agent that's waiting for input and presents them one at a time. Respond, skip, or let the queue guide your workflow. Great for managing 5+ agents at once.
+Press `Shift+Cmd+V` (`Shift+Ctrl+V`) to enter Vibe Mode. Chorus queues up every agent that's waiting for input and presents them one at a time. Respond, skip, or let the queue guide your workflow. Great for managing 5+ agents at once.
 
 ### Stop & Resume
 
@@ -145,6 +148,8 @@ Hit **Stop** to interrupt an agent mid-task. Chorus transparently restarts the p
 ---
 
 ## Keyboard Shortcuts
+
+> On Windows/Linux, replace **Cmd** with **Ctrl**.
 
 | Shortcut | Action |
 |----------|--------|
@@ -156,7 +161,7 @@ Hit **Stop** to interrupt an agent mid-task. Chorus transparently restarts the p
 | `Shift+Cmd+T` | Toggle light/dark theme |
 | `Shift+Cmd+J` | Previous agent |
 | `Shift+Cmd+K` | Next agent |
-| `Cmd+/` | Show all shortcuts |
+| `Cmd+K` | Show all shortcuts |
 
 ---
 
@@ -210,7 +215,7 @@ src/                    # React frontend
   components/           # UI components (sidebar, main panel, dialogs)
   store/                # Zustand stores (agent, sidebar, theme, toast)
   types/                # TypeScript type definitions
-  lib/                  # Theme palettes, constants, utilities
+  lib/                  # Theme palettes, constants, platform utils
   hooks/                # Custom React hooks
 src-tauri/              # Rust backend
   src/agent/            # Process spawning, state management, PID registry

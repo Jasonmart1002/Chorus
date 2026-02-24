@@ -21,8 +21,15 @@ fn pid_registry() -> &'static Mutex<Vec<u32>> {
 pub fn kill_all_children() {
     if let Ok(pids) = pid_registry().lock() {
         for &pid in pids.iter() {
+            #[cfg(unix)]
             unsafe {
                 libc::kill(pid as i32, libc::SIGKILL);
+            }
+            #[cfg(windows)]
+            {
+                let _ = std::process::Command::new("taskkill")
+                    .args(&["/PID", &pid.to_string(), "/T", "/F"])
+                    .output();
             }
         }
     }
@@ -41,30 +48,52 @@ fn unregister_pid(pid: u32) {
 }
 
 /// Resolve the `claude` binary path.
-/// macOS app bundles don't inherit the user's shell PATH, so we search common locations.
+/// App bundles may not inherit the user's shell PATH, so we search common locations.
 fn resolve_claude_path() -> Result<PathBuf, String> {
     // Try PATH first (works when launched from terminal / tauri dev)
     if let Ok(path) = which::which("claude") {
         return Ok(path);
     }
 
-    // Common install locations
-    let home = std::env::var("HOME").unwrap_or_default();
-    let candidates = [
-        format!("{}/.local/bin/claude", home),
-        format!("{}/.claude/bin/claude", home),
-        "/usr/local/bin/claude".to_string(),
-        "/opt/homebrew/bin/claude".to_string(),
-    ];
+    #[cfg(unix)]
+    {
+        let home = std::env::var("HOME").unwrap_or_default();
+        let candidates = [
+            format!("{}/.local/bin/claude", home),
+            format!("{}/.claude/bin/claude", home),
+            "/usr/local/bin/claude".to_string(),
+            "/opt/homebrew/bin/claude".to_string(),
+        ];
 
-    for candidate in &candidates {
-        let path = PathBuf::from(candidate);
-        if path.exists() {
-            return Ok(path);
+        for candidate in &candidates {
+            let path = PathBuf::from(candidate);
+            if path.exists() {
+                return Ok(path);
+            }
         }
+
+        Err("Could not find 'claude' binary. Searched PATH and common locations (~/.local/bin, ~/.claude/bin, /usr/local/bin, /opt/homebrew/bin). Is Claude Code installed?".to_string())
     }
 
-    Err("Could not find 'claude' binary. Searched PATH and common locations (~/.local/bin, ~/.claude/bin, /usr/local/bin, /opt/homebrew/bin). Is Claude Code installed?".to_string())
+    #[cfg(windows)]
+    {
+        let userprofile = std::env::var("USERPROFILE").unwrap_or_default();
+        let localappdata = std::env::var("LOCALAPPDATA").unwrap_or_default();
+        let candidates = [
+            format!("{}\\.claude\\bin\\claude.exe", userprofile),
+            format!("{}\\Programs\\claude-code\\claude.exe", localappdata),
+            format!("{}\\Microsoft\\WinGet\\Links\\claude.exe", localappdata),
+        ];
+
+        for candidate in &candidates {
+            let path = PathBuf::from(candidate);
+            if path.exists() {
+                return Ok(path);
+            }
+        }
+
+        Err("Could not find 'claude' binary. Searched PATH and common locations (%USERPROFILE%\\.claude\\bin, %LOCALAPPDATA%\\Programs\\claude-code, WinGet Links). Is Claude Code installed?".to_string())
+    }
 }
 
 pub struct AgentProcess {
@@ -298,11 +327,18 @@ impl AgentProcess {
             .map_err(|e| format!("Failed to send to stdin: {}", e))
     }
 
-    /// Send SIGTERM for graceful shutdown. Allows the process to save session state.
+    /// Send a graceful shutdown signal. Allows the process to save session state.
     pub fn terminate(&self) {
         if let Some(pid) = self.child.id() {
+            #[cfg(unix)]
             unsafe {
                 libc::kill(pid as i32, libc::SIGTERM);
+            }
+            #[cfg(windows)]
+            {
+                let _ = std::process::Command::new("taskkill")
+                    .args(&["/PID", &pid.to_string(), "/T"])
+                    .output();
             }
         }
     }

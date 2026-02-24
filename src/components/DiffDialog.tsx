@@ -5,6 +5,7 @@ import { listen } from "@tauri-apps/api/event";
 import { PrismLight as SyntaxHighlighter } from "react-syntax-highlighter";
 import diff from "react-syntax-highlighter/dist/esm/languages/prism/diff";
 import { useThemeStore } from "../store/themeStore";
+import { basename } from "../lib/platform";
 import { Dialog } from "./ui/Dialog";
 import { Button } from "./ui/Button";
 import { CODE_BG, CODE_MANTLE, CODE_BORDER, CODE_TEXT, CODE_SUBTEXT, buildCodeSyntaxTheme } from "../lib/codeTheme";
@@ -117,7 +118,7 @@ export function DiffDialog({ cwd, onClose }: Props) {
 
   const isDone = !running && exitCode !== undefined;
   const diffText = lines.join("\n");
-  const dirName = cwd.split("/").pop() || cwd;
+  const dirName = basename(cwd);
 
   // Status bar color
   const statusColor = running

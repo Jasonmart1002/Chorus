@@ -1,4 +1,5 @@
 import { useThemeStore } from "../store/themeStore";
+import { MOD_KEY, SHIFT_KEY } from "../lib/platform";
 import { Dialog } from "./ui/Dialog";
 
 interface Props {
@@ -15,9 +16,8 @@ interface Section {
   shortcuts: Shortcut[];
 }
 
-const IS_MAC = navigator.platform.toUpperCase().includes("MAC");
-const MOD = IS_MAC ? "\u2318" : "Ctrl";
-const SHIFT = IS_MAC ? "\u21E7" : "Shift";
+const MOD = MOD_KEY;
+const SHIFT = SHIFT_KEY;
 
 const SECTIONS: Section[] = [
   {
@@ -57,6 +57,8 @@ const SECTIONS: Section[] = [
   {
     title: "App",
     shortcuts: [
+      { keys: [MOD, SHIFT, "P"], label: "Skills & Plugins" },
+      { keys: [MOD, SHIFT, "A"], label: "Automations" },
       { keys: [MOD, SHIFT, "T"], label: "Toggle theme" },
       { keys: [MOD, "K"], label: "Show this cheat sheet" },
     ],

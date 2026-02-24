@@ -7,6 +7,7 @@ import { useAgentStore } from "../../store/agentStore";
 import { useSidebarStore } from "../../store/sidebarStore";
 import { useThemeStore } from "../../store/themeStore";
 import { getDisplayName } from "../../lib/sortAgents";
+import { basename } from "../../lib/platform";
 
 interface Props {
   agent: Agent;
@@ -52,7 +53,7 @@ export function AgentCard({
   const pastelColor = theme[pastelKey];
 
   // Extract dir name from cwd
-  const dirName = agent.config.cwd.split("/").filter(Boolean).pop() || agent.config.cwd;
+  const dirName = basename(agent.config.cwd);
 
   // Reset confirming state when mouse leaves the card
   useEffect(() => {

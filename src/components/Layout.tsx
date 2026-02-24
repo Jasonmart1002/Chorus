@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useAgentStore } from "../store/agentStore";
 import { useSidebarStore } from "../store/sidebarStore";
 import { useThemeStore } from "../store/themeStore";
+import { useAutomationsStore } from "../store/automationsStore";
 import { sortAgents } from "../lib/sortAgents";
 import { useNotifications } from "../hooks/useNotifications";
 import { Sidebar } from "./Sidebar/Sidebar";
@@ -22,6 +23,7 @@ export function Layout() {
 
   useEffect(() => {
     init();
+    useAutomationsStore.getState().initListener();
   }, [init]);
 
   const handleKeyDown = useCallback(
@@ -78,6 +80,20 @@ export function Layout() {
             if (useAgentStore.getState().selectedAgentId) {
               e.preventDefault();
               useAgentStore.setState({ pendingAction: 'terminal' });
+            }
+            return;
+          case "p": // Toggle skills view
+            e.preventDefault();
+            {
+              const store = useAgentStore.getState();
+              store.setViewMode(store.viewMode === "skills" ? "agents" : "skills");
+            }
+            return;
+          case "a": // Toggle automations view
+            e.preventDefault();
+            {
+              const store = useAgentStore.getState();
+              store.setViewMode(store.viewMode === "automations" ? "agents" : "automations");
             }
             return;
         }

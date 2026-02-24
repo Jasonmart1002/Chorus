@@ -1,18 +1,38 @@
 import { useAgentStore } from "../../store/agentStore";
 import { useThemeStore } from "../../store/themeStore";
+import { MOD_LABEL } from "../../lib/platform";
 import { AgentView } from "./AgentView";
 import { VibeMode } from "./VibeMode";
+import { SkillsView } from "./SkillsView";
+import { AutomationsView } from "./AutomationsView";
 import { Bot } from "lucide-react";
 
 export function MainPanel() {
   const selectedAgentId = useAgentStore((s) => s.selectedAgentId);
   const vibeMode = useAgentStore((s) => s.vibeMode);
+  const viewMode = useAgentStore((s) => s.viewMode);
   const theme = useThemeStore((s) => s.current);
 
   if (vibeMode) {
     return (
       <div style={{ flex: 1, height: "100%", minWidth: 0, overflow: "hidden" }}>
         <VibeMode />
+      </div>
+    );
+  }
+
+  if (viewMode === "skills") {
+    return (
+      <div style={{ flex: 1, height: "100%", minWidth: 0, overflow: "hidden" }}>
+        <SkillsView />
+      </div>
+    );
+  }
+
+  if (viewMode === "automations") {
+    return (
+      <div style={{ flex: 1, height: "100%", minWidth: 0, overflow: "hidden" }}>
+        <AutomationsView />
       </div>
     );
   }
@@ -115,7 +135,7 @@ export function MainPanel() {
             cursor: "default",
           }}
         >
-          Cmd+N
+          {MOD_LABEL}+N
         </kbd>
       </div>
     );

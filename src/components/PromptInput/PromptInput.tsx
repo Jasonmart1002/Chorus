@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { Send, ChevronDown } from "lucide-react";
 import { useAgentStore } from "../../store/agentStore";
 import { useThemeStore } from "../../store/themeStore";
+import { MOD_LABEL } from "../../lib/platform";
 import { IconButton } from "../ui/IconButton";
 import { DropdownMenu, DropdownMenuItem } from "../ui/DropdownMenu";
 
@@ -264,7 +265,7 @@ export function PromptInput({ agentId, disabled }: Props) {
             opacity: 0.7,
           }}
         >
-          Shift+Tab to switch mode &middot; Cmd+Enter to send
+          Shift+Tab to switch mode &middot; {MOD_LABEL}+Enter to send
         </span>
       </div>
     </div>

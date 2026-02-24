@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { Sun, Moon, Plus, Search, Zap, SkipForward, Folder, MessageSquare, CheckCircle2 } from "lucide-react";
+import { Sun, Moon, Plus, Search, Zap, SkipForward, Folder, MessageSquare, CheckCircle2, Blocks, Timer, Bot } from "lucide-react";
 import { useAgentStore } from "../../store/agentStore";
 import { useSidebarStore, type StatusFilter } from "../../store/sidebarStore";
 import { useThemeStore } from "../../store/themeStore";
 import { sortAgents, getDisplayName } from "../../lib/sortAgents";
 import { getStatusColors, STATUS_LABELS } from "../../lib/constants";
 import { PASTEL_KEYS } from "../../lib/theme";
+import { basename } from "../../lib/platform";
 import { IconButton } from "../ui/IconButton";
 import { Button } from "../ui/Button";
 import { AgentCard } from "./AgentCard";
@@ -144,7 +145,7 @@ function VibeSidebarContent() {
                     whiteSpace: "nowrap",
                   }}
                 >
-                  {currentAgent.config.cwd.split("/").filter(Boolean).pop() || currentAgent.config.cwd}
+                  {basename(currentAgent.config.cwd)}
                 </span>
               </div>
             </div>
@@ -401,6 +402,8 @@ export function Sidebar({ onNewAgent }: Props) {
 
   const vibeMode = useAgentStore((s) => s.vibeMode);
   const toggleVibeMode = useAgentStore((s) => s.toggleVibeMode);
+  const viewMode = useAgentStore((s) => s.viewMode);
+  const setViewMode = useAgentStore((s) => s.setViewMode);
 
   const theme = useThemeStore((s) => s.current);
   const themeMode = useThemeStore((s) => s.mode);
@@ -632,25 +635,8 @@ export function Sidebar({ onNewAgent }: Props) {
           </div>
         </div>
 
-        {/* Right: vibe mode toggle + theme toggle */}
+        {/* Right: theme toggle only */}
         <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-          <IconButton
-            icon={<Zap size={14} strokeWidth={2.2} />}
-            tooltip={vibeMode ? "Exit Vibe Mode" : "Enter Vibe Mode"}
-            onClick={toggleVibeMode}
-            style={
-              vibeMode
-                ? {
-                    background: theme.accentGradient,
-                    color: theme.textOnAccent,
-                    border: `2px solid ${theme.borderStrong}`,
-                    boxShadow: theme.shadowChunky,
-                    borderRadius: theme.borderRadiusSm,
-                  }
-                : { borderRadius: theme.borderRadiusSm }
-            }
-            hoverColor={theme.gold}
-          />
           <IconButton
             icon={
               themeMode === "light" ? (
@@ -665,6 +651,68 @@ export function Sidebar({ onNewAgent }: Props) {
             style={{ borderRadius: theme.borderRadiusSm }}
           />
         </div>
+      </div>
+
+      {/* View mode icons */}
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          gap: 4,
+          padding: "8px 12px 0",
+        }}
+      >
+        <IconButton
+          icon={<Blocks size={14} strokeWidth={2.2} />}
+          tooltip="Skills & Plugins"
+          onClick={() => setViewMode(viewMode === "skills" ? "agents" : "skills")}
+          style={
+            viewMode === "skills"
+              ? {
+                  background: theme.mintLight,
+                  color: theme.mint,
+                  border: `2px solid ${theme.mint}`,
+                  boxShadow: theme.shadowChunky,
+                  borderRadius: theme.borderRadiusSm,
+                }
+              : { borderRadius: theme.borderRadiusSm }
+          }
+          hoverColor={theme.mint}
+        />
+        <IconButton
+          icon={<Timer size={14} strokeWidth={2.2} />}
+          tooltip="Automations"
+          onClick={() => setViewMode(viewMode === "automations" ? "agents" : "automations")}
+          style={
+            viewMode === "automations"
+              ? {
+                  background: theme.goldLight,
+                  color: theme.gold,
+                  border: `2px solid ${theme.gold}`,
+                  boxShadow: theme.shadowChunky,
+                  borderRadius: theme.borderRadiusSm,
+                }
+              : { borderRadius: theme.borderRadiusSm }
+          }
+          hoverColor={theme.gold}
+        />
+        <IconButton
+          icon={<Zap size={14} strokeWidth={2.2} />}
+          tooltip={vibeMode ? "Exit Vibe Mode" : "Enter Vibe Mode"}
+          onClick={toggleVibeMode}
+          style={
+            vibeMode
+              ? {
+                  background: theme.accentGradient,
+                  color: theme.textOnAccent,
+                  border: `2px solid ${theme.borderStrong}`,
+                  boxShadow: theme.shadowChunky,
+                  borderRadius: theme.borderRadiusSm,
+                }
+              : { borderRadius: theme.borderRadiusSm }
+          }
+          hoverColor={theme.gold}
+        />
       </div>
 
       {vibeMode ? (

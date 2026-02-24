@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { Play, Plus, X, Loader, Square, Settings, ChevronDown } from "lucide-react";
 import { useAgentStore } from "../store/agentStore";
 import { useThemeStore } from "../store/themeStore";
+import { basename } from "../lib/platform";
 import { Dialog } from "./ui/Dialog";
 import { Button } from "./ui/Button";
 import { Textarea } from "./ui/Textarea";
@@ -97,7 +98,7 @@ export function RunDialog({ cwd, onClose }: Props) {
     await killRunningCommand(cwd);
   };
 
-  const dirName = cwd.split("/").pop() || cwd;
+  const dirName = basename(cwd);
 
   return (
     <Dialog

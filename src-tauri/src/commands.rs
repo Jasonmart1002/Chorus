@@ -213,20 +213,34 @@ pub async fn run_command(
         return Err(format!("Directory does not exist: {}", cwd));
     }
 
-    let shell = std::env::var("SHELL").unwrap_or_else(|_| "sh".to_string());
-    let mut cmd = tokio::process::Command::new(&shell);
-    cmd.args(&["-lc", &command])
-        .current_dir(&cwd)
+    #[cfg(unix)]
+    let mut cmd = {
+        let shell = std::env::var("SHELL").unwrap_or_else(|_| "sh".to_string());
+        let mut c = tokio::process::Command::new(&shell);
+        c.args(&["-lc", &command]);
+        // Create a new process group so we can kill the entire tree
+        unsafe {
+            c.pre_exec(|| {
+                libc::setpgid(0, 0);
+                Ok(())
+            });
+        }
+        c
+    };
+
+    #[cfg(windows)]
+    let mut cmd = {
+        use std::os::windows::process::CommandExt;
+        const CREATE_NEW_PROCESS_GROUP: u32 = 0x00000200;
+        let mut c = tokio::process::Command::new("cmd.exe");
+        c.args(&["/c", &command]);
+        c.creation_flags(CREATE_NEW_PROCESS_GROUP);
+        c
+    };
+
+    cmd.current_dir(&cwd)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
-
-    // Create a new process group so we can kill the entire tree
-    unsafe {
-        cmd.pre_exec(|| {
-            libc::setpgid(0, 0);
-            Ok(())
-        });
-    }
 
     if let Some(vars) = env_vars {
         for (key, value) in vars {
@@ -311,11 +325,20 @@ pub async fn kill_running_command(
     running_cmd: tauri::State<'_, RunningCommandState>,
 ) -> Result<(), String> {
     if let Some(pid) = running_cmd.lock().await.remove(&cwd) {
-        // Kill the process group so child processes are also terminated
-        let ret = unsafe { libc::kill(-(pid as i32), libc::SIGTERM) };
-        if ret != 0 {
-            // Fallback: kill just the process
-            unsafe { libc::kill(pid as i32, libc::SIGKILL) };
+        #[cfg(unix)]
+        {
+            // Kill the process group so child processes are also terminated
+            let ret = unsafe { libc::kill(-(pid as i32), libc::SIGTERM) };
+            if ret != 0 {
+                // Fallback: kill just the process
+                unsafe { libc::kill(pid as i32, libc::SIGKILL) };
+            }
+        }
+        #[cfg(windows)]
+        {
+            let _ = std::process::Command::new("taskkill")
+                .args(&["/PID", &pid.to_string(), "/T", "/F"])
+                .output();
         }
     }
     Ok(())
@@ -323,19 +346,44 @@ pub async fn kill_running_command(
 
 #[tauri::command]
 pub async fn open_terminal(cwd: String) -> Result<(), String> {
-    // Open Terminal.app at the given directory
-    let script = format!(
-        r#"tell application "Terminal"
+    #[cfg(target_os = "macos")]
+    {
+        let script = format!(
+            r#"tell application "Terminal"
     do script "cd '{}'"
     activate
 end tell"#,
-        cwd.replace('\'', "'\\''")
-    );
-    tokio::process::Command::new("osascript")
-        .arg("-e")
-        .arg(&script)
-        .spawn()
-        .map_err(|e| format!("Failed to open terminal: {}", e))?;
+            cwd.replace('\'', "'\\''")
+        );
+        tokio::process::Command::new("osascript")
+            .arg("-e")
+            .arg(&script)
+            .spawn()
+            .map_err(|e| format!("Failed to open terminal: {}", e))?;
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        tokio::process::Command::new("cmd.exe")
+            .args(&["/K", &format!("cd /d \"{}\"", cwd)])
+            .spawn()
+            .map_err(|e| format!("Failed to open terminal: {}", e))?;
+    }
+
+    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
+    {
+        // Linux — try common terminal emulators
+        let _ = tokio::process::Command::new("xdg-terminal")
+            .current_dir(&cwd)
+            .spawn()
+            .or_else(|_| {
+                tokio::process::Command::new("x-terminal-emulator")
+                    .current_dir(&cwd)
+                    .spawn()
+            })
+            .map_err(|e| format!("Failed to open terminal: {}", e))?;
+    }
+
     Ok(())
 }
 
@@ -344,19 +392,41 @@ pub async fn open_claude_terminal(
     cwd: String,
     session_id: String,
 ) -> Result<(), String> {
-    // Open Terminal.app with `claude --resume` for the given session
-    let script = format!(
-        r#"tell application "Terminal"
+    #[cfg(target_os = "macos")]
+    {
+        let script = format!(
+            r#"tell application "Terminal"
     do script "cd '{}' && claude --resume '{}'  "
     activate
 end tell"#,
-        cwd.replace('\'', "'\\''"),
-        session_id.replace('\'', "'\\''"),
-    );
-    tokio::process::Command::new("osascript")
-        .arg("-e")
-        .arg(&script)
-        .spawn()
-        .map_err(|e| format!("Failed to open terminal: {}", e))?;
+            cwd.replace('\'', "'\\''"),
+            session_id.replace('\'', "'\\''"),
+        );
+        tokio::process::Command::new("osascript")
+            .arg("-e")
+            .arg(&script)
+            .spawn()
+            .map_err(|e| format!("Failed to open terminal: {}", e))?;
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        let cmd_str = format!("cd /d \"{}\" && claude --resume \"{}\"", cwd, session_id);
+        tokio::process::Command::new("cmd.exe")
+            .args(&["/K", &cmd_str])
+            .spawn()
+            .map_err(|e| format!("Failed to open terminal: {}", e))?;
+    }
+
+    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
+    {
+        let cmd_str = format!("cd '{}' && claude --resume '{}'", cwd, session_id);
+        let _ = tokio::process::Command::new("x-terminal-emulator")
+            .arg("-e")
+            .arg(&format!("bash -c '{}'", cmd_str))
+            .spawn()
+            .map_err(|e| format!("Failed to open terminal: {}", e))?;
+    }
+
     Ok(())
 }

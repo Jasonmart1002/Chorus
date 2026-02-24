@@ -4,6 +4,7 @@ import { FolderOpen } from "lucide-react";
 import { useAgentStore } from "../store/agentStore";
 import { useThemeStore } from "../store/themeStore";
 import { DEFAULT_PERMISSION_MODE } from "../lib/constants";
+import { basename } from "../lib/platform";
 import { Dialog } from "./ui/Dialog";
 import { Button } from "./ui/Button";
 import { Input } from "./ui/Input";
@@ -27,7 +28,7 @@ export function NewAgentDialog({ onClose }: Props) {
     if (selected && typeof selected === "string") {
       setCwd(selected);
       if (!name) {
-        setName(selected.split("/").pop() || "");
+        setName(basename(selected));
       }
     }
   };

@@ -11,6 +11,8 @@ import type {
 import { useSidebarStore } from "./sidebarStore";
 import { toast } from "./toastStore";
 
+export type ViewMode = "agents" | "skills" | "automations";
+
 export interface CommandState {
   cwd: string;
   command: string;
@@ -35,10 +37,14 @@ interface AgentStore {
   vibeCurrentId: string | null;
   attentionTimestamps: Record<string, number>; // agent_id → Date.now() when entered queue
 
+  // View mode
+  viewMode: ViewMode;
+
   // Pending action (triggered by global shortcuts, consumed by ContextSummary)
   pendingAction: 'git' | 'terminal' | 'run' | null;
 
   // Actions
+  setViewMode: (mode: ViewMode) => void;
   clearPendingAction: () => void;
   init: () => Promise<void>;
   createAgent: (
@@ -89,8 +95,10 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
   vibeMode: false,
   vibeCurrentId: null,
   attentionTimestamps: {},
+  viewMode: "agents" as ViewMode,
   pendingAction: null,
 
+  setViewMode: (mode) => set({ viewMode: mode, vibeMode: false }),
   clearPendingAction: () => set({ pendingAction: null }),
 
   init: async () => {
@@ -347,9 +355,9 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
     set((state) => {
       if (agentId && state.attentionSet[agentId]) {
         const { [agentId]: _, ...restAttention } = state.attentionSet;
-        return { selectedAgentId: agentId, attentionSet: restAttention };
+        return { selectedAgentId: agentId, attentionSet: restAttention, viewMode: "agents" as ViewMode };
       }
-      return { selectedAgentId: agentId };
+      return { selectedAgentId: agentId, viewMode: "agents" as ViewMode };
     });
   },
 
@@ -359,7 +367,7 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
       set({ vibeMode: false, vibeCurrentId: null });
     } else {
       const first = nextVibeAgent(state.attentionSet, state.attentionTimestamps);
-      set({ vibeMode: true, vibeCurrentId: first });
+      set({ vibeMode: true, vibeCurrentId: first, viewMode: "agents" as ViewMode });
     }
   },
 
