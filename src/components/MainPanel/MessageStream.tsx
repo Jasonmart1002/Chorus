@@ -891,7 +891,7 @@ function AskUserQuestionView({ block, agentId }: { block: ToolUseBlock; agentId:
             letterSpacing: "0.01em",
           }}
         >
-          Claude has a question!
+          Agent has a question!
         </span>
         <span style={{ fontSize: 13 }}>&#128172;</span>
       </div>

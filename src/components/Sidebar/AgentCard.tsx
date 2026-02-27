@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { X, Pin, Folder, Check } from "lucide-react";
+import { X, Pin, Folder, Check, Zap } from "lucide-react";
 import type { Agent } from "../../types/agent";
 import { getStatusColors, STATUS_LABELS } from "../../lib/constants";
 import { PASTEL_KEYS } from "../../lib/theme";
@@ -315,6 +315,25 @@ export function AgentCard({
         >
           {dirName}
         </span>
+        {agent.config.engine && agent.config.engine !== "claude" && (
+          <span
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 2,
+              fontSize: 9,
+              color: agent.config.engine === "codex" ? "#a6e3a1" : "#89b4fa",
+              fontFamily: theme.fontBody,
+              fontWeight: 700,
+              flexShrink: 0,
+              textTransform: "uppercase",
+              letterSpacing: "0.04em",
+            }}
+          >
+            <Zap size={8} />
+            {agent.config.engine}
+          </span>
+        )}
         <span
           style={{
             fontSize: 10,

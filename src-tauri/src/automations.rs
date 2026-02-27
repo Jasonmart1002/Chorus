@@ -6,7 +6,7 @@ use tokio::sync::Mutex;
 
 use crate::agent::manager::AgentManager;
 use crate::agent::process::AgentProcess;
-use crate::agent::state::AgentConfig;
+use crate::agent::state::{AgentConfig, Engine};
 
 // ---------------------------------------------------------------------------
 // Types
@@ -299,7 +299,15 @@ async fn fire_automation(
             .processes
             .get(agent_id)
             .ok_or_else(|| format!("Agent {} not found", agent_id))?;
-        process.send(&automation.prompt).await?;
+        let engine = {
+            let mgr_ref = manager.lock().await;
+            mgr_ref
+                .agents
+                .get(agent_id)
+                .map(|a| a.config.engine.clone())
+                .unwrap_or(Engine::Claude)
+        };
+        process.send(&automation.prompt, &engine).await?;
         return Ok(agent_id.clone());
     }
 
@@ -320,12 +328,14 @@ async fn fire_automation(
     let agent_id = uuid::Uuid::new_v4().to_string();
     let session_id = uuid::Uuid::new_v4().to_string();
     let perm_mode = "bypassPermissions".to_string();
+    let engine = Engine::Claude; // Automations default to Claude
 
     let config = AgentConfig {
         name: agent_name,
         cwd: cwd.clone(),
         model: None,
         permission_mode: perm_mode.clone(),
+        engine: engine.clone(),
     };
 
     let process = AgentProcess::spawn(
@@ -334,6 +344,7 @@ async fn fire_automation(
         session_id.clone(),
         None,
         perm_mode,
+        engine.clone(),
         app.clone(),
     )?;
 
@@ -348,7 +359,7 @@ async fn fire_automation(
     {
         let mgr = manager.lock().await;
         if let Some(process) = mgr.processes.get(&agent_id) {
-            process.send(&automation.prompt).await?;
+            process.send(&automation.prompt, &engine).await?;
         }
     }
 

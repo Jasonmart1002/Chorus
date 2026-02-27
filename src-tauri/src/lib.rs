@@ -28,6 +28,7 @@ pub fn run() {
             commands::kill_agent,
             commands::remove_agent,
             commands::list_agents,
+            commands::detect_engines,
             commands::run_command,
             commands::kill_running_command,
             commands::open_terminal,
