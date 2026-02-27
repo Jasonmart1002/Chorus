@@ -372,16 +372,33 @@ end tell"#,
 
     #[cfg(not(any(target_os = "macos", target_os = "windows")))]
     {
-        // Linux — try common terminal emulators
-        let _ = tokio::process::Command::new("xdg-terminal")
-            .current_dir(&cwd)
-            .spawn()
-            .or_else(|_| {
-                tokio::process::Command::new("x-terminal-emulator")
-                    .current_dir(&cwd)
-                    .spawn()
-            })
-            .map_err(|e| format!("Failed to open terminal: {}", e))?;
+        // Linux — try common terminal emulators in order of popularity
+        let terminals: &[(&str, &[&str])] = &[
+            ("x-terminal-emulator", &["--working-directory", &cwd]),
+            ("gnome-terminal", &["--working-directory", &cwd]),
+            ("konsole", &["--workdir", &cwd]),
+            ("xfce4-terminal", &["--working-directory", &cwd]),
+            ("alacritty", &["--working-directory", &cwd]),
+            ("kitty", &["--directory", &cwd]),
+            ("wezterm", &["start", "--cwd", &cwd]),
+            ("xterm", &["-e", &format!("cd '{}' && $SHELL", cwd.replace('\'', "'\\''"))]),
+        ];
+
+        let mut launched = false;
+        for (term, args) in terminals {
+            if tokio::process::Command::new(term)
+                .args(*args)
+                .spawn()
+                .is_ok()
+            {
+                launched = true;
+                break;
+            }
+        }
+
+        if !launched {
+            return Err("Failed to open terminal: no supported terminal emulator found. Tried: x-terminal-emulator, gnome-terminal, konsole, xfce4-terminal, alacritty, kitty, wezterm, xterm".to_string());
+        }
     }
 
     Ok(())
@@ -420,12 +437,40 @@ end tell"#,
 
     #[cfg(not(any(target_os = "macos", target_os = "windows")))]
     {
-        let cmd_str = format!("cd '{}' && claude --resume '{}'", cwd, session_id);
-        let _ = tokio::process::Command::new("x-terminal-emulator")
-            .arg("-e")
-            .arg(&format!("bash -c '{}'", cmd_str))
-            .spawn()
-            .map_err(|e| format!("Failed to open terminal: {}", e))?;
+        let escaped_cwd = cwd.replace('\'', "'\\''");
+        let escaped_sid = session_id.replace('\'', "'\\''");
+        let shell_cmd = format!(
+            "cd '{}' && claude --resume '{}'",
+            escaped_cwd, escaped_sid
+        );
+
+        // Terminal emulators and how they accept a command to run
+        let terminals: &[(&str, &[&str])] = &[
+            ("x-terminal-emulator", &["-e", "bash", "-c", &shell_cmd]),
+            ("gnome-terminal", &["--", "bash", "-c", &shell_cmd]),
+            ("konsole", &["-e", "bash", "-c", &shell_cmd]),
+            ("xfce4-terminal", &["-e", &format!("bash -c \"{}\"", shell_cmd)]),
+            ("alacritty", &["-e", "bash", "-c", &shell_cmd]),
+            ("kitty", &["bash", "-c", &shell_cmd]),
+            ("wezterm", &["start", "--", "bash", "-c", &shell_cmd]),
+            ("xterm", &["-e", "bash", "-c", &shell_cmd]),
+        ];
+
+        let mut launched = false;
+        for (term, args) in terminals {
+            if tokio::process::Command::new(term)
+                .args(*args)
+                .spawn()
+                .is_ok()
+            {
+                launched = true;
+                break;
+            }
+        }
+
+        if !launched {
+            return Err("Failed to open terminal: no supported terminal emulator found. Tried: x-terminal-emulator, gnome-terminal, konsole, xfce4-terminal, alacritty, kitty, wezterm, xterm".to_string());
+        }
     }
 
     Ok(())
