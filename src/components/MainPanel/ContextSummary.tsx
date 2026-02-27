@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
-import { Cpu, RotateCw, Folder, Play, Loader, GitBranch, ChevronDown, TerminalSquare } from "lucide-react";
+import { Cpu, RotateCw, Folder, Play, Loader, GitBranch, ChevronDown, TerminalSquare, Zap } from "lucide-react";
 import type { Agent } from "../../types/agent";
+import { ENGINE_LABELS } from "../../types/agent";
 import { getStatusColors, STATUS_LABELS } from "../../lib/constants";
 import { useAgentStore } from "../../store/agentStore";
 import { useSidebarStore } from "../../store/sidebarStore";
@@ -154,6 +155,15 @@ export function ContextSummary({ agent }: Props) {
 
         {/* Info pills */}
         <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+          <span style={pillStyle}>
+            <Zap size={11} color={
+              agent.config.engine === "codex" ? "#a6e3a1" :
+              agent.config.engine === "gemini" ? "#89b4fa" :
+              theme.lavender
+            } />
+            {ENGINE_LABELS[agent.config.engine] || "Claude Code"}
+          </span>
+
           <span style={pillStyle}>
             <Folder size={11} color={theme.peach} />
             <span style={{ maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis" }}>

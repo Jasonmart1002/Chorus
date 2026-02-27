@@ -2,9 +2,10 @@ use std::sync::Arc;
 use tauri::Emitter;
 use tokio::sync::Mutex;
 
+use crate::agent::adapters::{self, EngineInfo};
 use crate::agent::manager::AgentManager;
 use crate::agent::process::{AgentProcess, StatusChange};
-use crate::agent::state::{AgentConfig, AgentState, AgentStatus};
+use crate::agent::state::{AgentConfig, AgentState, AgentStatus, Engine};
 
 type ManagerState = Arc<Mutex<AgentManager>>;
 pub type RunningCommandState = Arc<Mutex<std::collections::HashMap<String, u32>>>;
@@ -21,6 +22,7 @@ pub async fn create_agent(
     cwd: String,
     model: Option<String>,
     permission_mode: Option<String>,
+    engine: Option<Engine>,
     manager: tauri::State<'_, ManagerState>,
     app: tauri::AppHandle,
 ) -> Result<CreateAgentResult, String> {
@@ -31,12 +33,14 @@ pub async fn create_agent(
     let agent_id = uuid::Uuid::new_v4().to_string();
     let session_id = uuid::Uuid::new_v4().to_string();
     let perm_mode = permission_mode.unwrap_or_else(|| "bypassPermissions".to_string());
+    let engine = engine.unwrap_or(Engine::Claude);
 
     let config = AgentConfig {
         name: name.clone(),
         cwd: cwd.clone(),
         model: model.clone(),
         permission_mode: perm_mode.clone(),
+        engine: engine.clone(),
     };
 
     let process = AgentProcess::spawn(
@@ -45,6 +49,7 @@ pub async fn create_agent(
         session_id.clone(),
         model,
         perm_mode,
+        engine,
         app,
     )?;
 
@@ -61,11 +66,16 @@ pub async fn send_prompt(
     manager: tauri::State<'_, ManagerState>,
 ) -> Result<(), String> {
     let mgr = manager.lock().await;
+    let agent = mgr
+        .agents
+        .get(&agent_id)
+        .ok_or_else(|| format!("Agent {} not found", agent_id))?;
+    let engine = agent.config.engine.clone();
     let process = mgr
         .processes
         .get(&agent_id)
         .ok_or_else(|| format!("Agent {} not found", agent_id))?;
-    process.send(&text).await
+    process.send(&text, &engine).await
 }
 
 #[tauri::command]
@@ -76,7 +86,7 @@ pub async fn stop_agent(
 ) -> Result<(), String> {
     // `-p` mode doesn't handle SIGINT gracefully, so we do a transparent
     // kill+respawn with the same session-id. The conversation continues
-    // seamlessly because claude reloads the session history on startup.
+    // seamlessly because the CLI reloads the session history on startup.
 
     // 1. Take ownership of old process and extract agent info
     let (config, session_id, mut old_process) = {
@@ -97,7 +107,7 @@ pub async fn stop_agent(
     // 2. Suppress the "exited" status event from the dying process
     old_process.set_suppress_exit(true);
 
-    // 3. Send SIGTERM — allows claude to save session state gracefully
+    // 3. Send SIGTERM — allows the CLI to save session state gracefully
     old_process.terminate();
 
     // 4. Wait up to 3 seconds for graceful exit
@@ -125,6 +135,7 @@ pub async fn stop_agent(
         session_id,
         config.model.clone(),
         config.permission_mode.clone(),
+        config.engine.clone(),
         app.clone(),
     ) {
         Ok(p) => p,
@@ -183,6 +194,12 @@ pub async fn list_agents(
 ) -> Result<Vec<AgentState>, String> {
     let mgr = manager.lock().await;
     Ok(mgr.list_agents())
+}
+
+/// Detect which CLI engines are available on this system
+#[tauri::command]
+pub async fn detect_engines() -> Result<Vec<EngineInfo>, String> {
+    Ok(adapters::detect_engines())
 }
 
 #[derive(serde::Serialize, Clone)]

@@ -1,5 +1,3 @@
-use std::path::PathBuf;
-use std::process::Stdio;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, OnceLock};
 use tauri::Emitter;
@@ -7,9 +5,10 @@ use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::process::{Child, Command};
 use tokio::sync::mpsc;
 
-use super::state::AgentStatus;
+use super::adapters::{self, CliAdapter, ParsedEvent};
+use super::state::{AgentStatus, Engine};
 
-/// Global PID registry — tracks all spawned claude processes so they can be
+/// Global PID registry — tracks all spawned CLI processes so they can be
 /// killed reliably on app exit. Uses std::sync::Mutex (not tokio) so it's
 /// always lockable from synchronous contexts like window event handlers.
 fn pid_registry() -> &'static Mutex<Vec<u32>> {
@@ -44,55 +43,6 @@ fn register_pid(pid: u32) {
 fn unregister_pid(pid: u32) {
     if let Ok(mut pids) = pid_registry().lock() {
         pids.retain(|&p| p != pid);
-    }
-}
-
-/// Resolve the `claude` binary path.
-/// App bundles may not inherit the user's shell PATH, so we search common locations.
-fn resolve_claude_path() -> Result<PathBuf, String> {
-    // Try PATH first (works when launched from terminal / tauri dev)
-    if let Ok(path) = which::which("claude") {
-        return Ok(path);
-    }
-
-    #[cfg(unix)]
-    {
-        let home = std::env::var("HOME").unwrap_or_default();
-        let candidates = [
-            format!("{}/.local/bin/claude", home),
-            format!("{}/.claude/bin/claude", home),
-            "/usr/local/bin/claude".to_string(),
-            "/opt/homebrew/bin/claude".to_string(),
-        ];
-
-        for candidate in &candidates {
-            let path = PathBuf::from(candidate);
-            if path.exists() {
-                return Ok(path);
-            }
-        }
-
-        Err("Could not find 'claude' binary. Searched PATH and common locations (~/.local/bin, ~/.claude/bin, /usr/local/bin, /opt/homebrew/bin). Is Claude Code installed?".to_string())
-    }
-
-    #[cfg(windows)]
-    {
-        let userprofile = std::env::var("USERPROFILE").unwrap_or_default();
-        let localappdata = std::env::var("LOCALAPPDATA").unwrap_or_default();
-        let candidates = [
-            format!("{}\\.claude\\bin\\claude.exe", userprofile),
-            format!("{}\\Programs\\claude-code\\claude.exe", localappdata),
-            format!("{}\\Microsoft\\WinGet\\Links\\claude.exe", localappdata),
-        ];
-
-        for candidate in &candidates {
-            let path = PathBuf::from(candidate);
-            if path.exists() {
-                return Ok(path);
-            }
-        }
-
-        Err("Could not find 'claude' binary. Searched PATH and common locations (%USERPROFILE%\\.claude\\bin, %LOCALAPPDATA%\\Programs\\claude-code, WinGet Links). Is Claude Code installed?".to_string())
     }
 }
 
@@ -134,46 +84,43 @@ impl AgentProcess {
         session_id: String,
         model: Option<String>,
         permission_mode: String,
+        engine: Engine,
         app_handle: tauri::AppHandle,
     ) -> Result<Self, String> {
-        let claude_path = resolve_claude_path()?;
+        let adapter = adapters::create_adapter(&engine);
+        let binary_path = adapter.resolve_binary()?;
+        let args = adapter.build_args(
+            &session_id,
+            model.as_deref(),
+            &permission_mode,
+        );
 
-        let mut cmd = Command::new(&claude_path);
-        cmd.arg("-p")
-            .arg("--output-format")
-            .arg("stream-json")
-            .arg("--input-format")
-            .arg("stream-json")
-            .arg("--verbose")
-            .arg("--session-id")
-            .arg(&session_id)
-            .arg("--permission-mode")
-            .arg(&permission_mode);
-
-        // AskUserQuestion gets auto-answered with a useless default in -p mode.
-        // Disable it so Claude asks questions as text instead.
-        // Plan mode tools (EnterPlanMode/ExitPlanMode) are kept — the UI handles them.
-        if permission_mode == "bypassPermissions" {
-            cmd.arg("--disallowed-tools").arg("AskUserQuestion");
-        }
-
-        if let Some(ref m) = model {
-            cmd.arg("--model").arg(m);
-        }
+        let mut cmd = Command::new(&binary_path);
+        cmd.args(&args);
 
         cmd.current_dir(&cwd)
-            .stdin(Stdio::piped())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped());
+            .stdin(std::process::Stdio::piped())
+            .stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::piped());
 
-        let mut child = cmd.spawn().map_err(|e| format!("Failed to spawn claude: {}", e))?;
+        // Create process group on Unix for reliable cleanup
+        #[cfg(unix)]
+        unsafe {
+            cmd.pre_exec(|| {
+                libc::setpgid(0, 0);
+                Ok(())
+            });
+        }
+
+        let mut child = cmd
+            .spawn()
+            .map_err(|e| format!("Failed to spawn {} CLI: {}", engine, e))?;
 
         let stdout = child.stdout.take().ok_or("Failed to capture stdout")?;
         let stderr = child.stderr.take().ok_or("Failed to capture stderr")?;
         let stdin = child.stdin.take().ok_or("Failed to capture stdin")?;
 
-        // Track PID for reliable cleanup on app exit (after .take() calls so
-        // we don't leave a stale PID in the registry if take() fails)
+        // Track PID for reliable cleanup on app exit
         if let Some(pid) = child.id() {
             register_pid(pid);
         }
@@ -197,58 +144,64 @@ impl AgentProcess {
 
         let suppress_exit = Arc::new(AtomicBool::new(false));
 
-        // Stdout reader task — parses NDJSON
+        // Stdout reader task — uses adapter to parse output
         let aid = agent_id.clone();
         let handle = app_handle.clone();
         let suppress_exit_clone = suppress_exit.clone();
         let spawned_pid = child.id();
+        let stdout_adapter = adapters::create_adapter(&engine);
         tokio::spawn(async move {
             let reader = BufReader::new(stdout);
             let mut lines = reader.lines();
             while let Ok(Some(line)) = lines.next_line().await {
-                if line.trim().is_empty() {
-                    continue;
-                }
-                if let Ok(json) = serde_json::from_str::<serde_json::Value>(&line) {
-                    // Emit the raw message to frontend
-                    let _ = handle.emit(
-                        "agent-message",
-                        AgentMessage {
-                            agent_id: aid.clone(),
-                            message: json.clone(),
-                        },
-                    );
+                let event = stdout_adapter.parse_stdout_line(&line);
 
-                    // Detect status from message type
-                    let msg_type = json.get("type").and_then(|v| v.as_str()).unwrap_or("");
-                    let subtype = json.get("subtype").and_then(|v| v.as_str()).unwrap_or("");
-
-                    let new_status = match msg_type {
-                        "system" if subtype == "init" => Some(AgentStatus::AwaitingInput),
-                        "assistant" => Some(AgentStatus::Working),
-                        "result" => {
-                            if subtype == "success" {
-                                Some(AgentStatus::AwaitingInput)
-                            } else {
-                                Some(AgentStatus::Errored)
-                            }
-                        }
-                        _ => None,
-                    };
-
-                    if let Some(status) = new_status {
+                match event {
+                    ParsedEvent::RawMessage { json } => {
+                        // Emit the message to frontend
                         let _ = handle.emit(
-                            "agent-status-changed",
-                            StatusChange {
+                            "agent-message",
+                            AgentMessage {
                                 agent_id: aid.clone(),
-                                status: status.clone(),
+                                message: json.clone(),
                             },
                         );
 
-                        // Queue triggers
-                        if status == AgentStatus::AwaitingInput || status == AgentStatus::Errored {
-                            // Only queue on result messages, not on init
-                            if msg_type == "result" {
+                        // Detect status from message type
+                        let msg_type =
+                            json.get("type").and_then(|v| v.as_str()).unwrap_or("");
+                        let subtype =
+                            json.get("subtype").and_then(|v| v.as_str()).unwrap_or("");
+
+                        let new_status = match msg_type {
+                            "system" if subtype == "init" => {
+                                Some(AgentStatus::AwaitingInput)
+                            }
+                            "assistant" => Some(AgentStatus::Working),
+                            "result" => {
+                                if subtype == "success" {
+                                    Some(AgentStatus::AwaitingInput)
+                                } else {
+                                    Some(AgentStatus::Errored)
+                                }
+                            }
+                            _ => None,
+                        };
+
+                        if let Some(status) = new_status {
+                            let _ = handle.emit(
+                                "agent-status-changed",
+                                StatusChange {
+                                    agent_id: aid.clone(),
+                                    status: status.clone(),
+                                },
+                            );
+
+                            // Queue triggers
+                            if (status == AgentStatus::AwaitingInput
+                                || status == AgentStatus::Errored)
+                                && msg_type == "result"
+                            {
                                 let reason = if status == AgentStatus::Errored {
                                     "errored"
                                 } else {
@@ -258,13 +211,95 @@ impl AgentProcess {
                                     "agent-entered-queue",
                                     QueueEntry {
                                         agent_id: aid.clone(),
-                                        agent_name: String::new(), // filled by frontend
+                                        agent_name: String::new(),
                                         reason: reason.to_string(),
                                     },
                                 );
                             }
                         }
                     }
+                    ParsedEvent::AskUser { question } => {
+                        // Wrap as a system message so frontend shows it
+                        let msg = serde_json::json!({
+                            "type": "assistant",
+                            "message": {
+                                "content": [{
+                                    "type": "text",
+                                    "text": format!("**Approval needed:** {}", question),
+                                }]
+                            }
+                        });
+                        let _ = handle.emit(
+                            "agent-message",
+                            AgentMessage {
+                                agent_id: aid.clone(),
+                                message: msg,
+                            },
+                        );
+                        let _ = handle.emit(
+                            "agent-status-changed",
+                            StatusChange {
+                                agent_id: aid.clone(),
+                                status: AgentStatus::AwaitingInput,
+                            },
+                        );
+                        let _ = handle.emit(
+                            "agent-entered-queue",
+                            QueueEntry {
+                                agent_id: aid.clone(),
+                                agent_name: String::new(),
+                                reason: "needs_approval".to_string(),
+                            },
+                        );
+                    }
+                    ParsedEvent::DiffProposal { diff } => {
+                        let msg = serde_json::json!({
+                            "type": "assistant",
+                            "message": {
+                                "content": [{
+                                    "type": "text",
+                                    "text": format!("```diff\n{}\n```", diff),
+                                }]
+                            }
+                        });
+                        let _ = handle.emit(
+                            "agent-message",
+                            AgentMessage {
+                                agent_id: aid.clone(),
+                                message: msg,
+                            },
+                        );
+                    }
+                    ParsedEvent::Compacting => {
+                        let msg = serde_json::json!({
+                            "type": "system",
+                            "subtype": "compact",
+                        });
+                        let _ = handle.emit(
+                            "agent-message",
+                            AgentMessage {
+                                agent_id: aid.clone(),
+                                message: msg,
+                            },
+                        );
+                    }
+                    ParsedEvent::Text { text } => {
+                        // Wrap as assistant text
+                        let msg = serde_json::json!({
+                            "type": "assistant",
+                            "message": {
+                                "content": [{"type": "text", "text": text}]
+                            }
+                        });
+                        let _ = handle.emit(
+                            "agent-message",
+                            AgentMessage {
+                                agent_id: aid.clone(),
+                                message: msg,
+                            },
+                        );
+                    }
+                    ParsedEvent::Ignore => {}
                 }
             }
 
@@ -286,17 +321,40 @@ impl AgentProcess {
         // Stderr reader task
         let aid2 = agent_id.clone();
         let handle2 = app_handle;
+        let stderr_adapter = adapters::create_adapter(&engine);
         tokio::spawn(async move {
             let reader = BufReader::new(stderr);
             let mut lines = reader.lines();
             while let Ok(Some(line)) = lines.next_line().await {
-                let _ = handle2.emit(
-                    "agent-stderr",
-                    StderrLine {
-                        agent_id: aid2.clone(),
-                        line,
-                    },
-                );
+                let event = stderr_adapter.parse_stderr_line(&line);
+                match event {
+                    ParsedEvent::Compacting => {
+                        let msg = serde_json::json!({
+                            "type": "system",
+                            "subtype": "compact",
+                        });
+                        let _ = handle2.emit(
+                            "agent-message",
+                            AgentMessage {
+                                agent_id: aid2.clone(),
+                                message: msg,
+                            },
+                        );
+                    }
+                    _ => {
+                        let text = match event {
+                            ParsedEvent::Text { text } => text,
+                            _ => line.clone(),
+                        };
+                        let _ = handle2.emit(
+                            "agent-stderr",
+                            StderrLine {
+                                agent_id: aid2.clone(),
+                                line: text,
+                            },
+                        );
+                    }
+                }
             }
         });
 
@@ -313,16 +371,11 @@ impl AgentProcess {
         self.suppress_exit.store(suppress, Ordering::Relaxed);
     }
 
-    pub async fn send(&self, text: &str) -> Result<(), String> {
-        let msg = serde_json::json!({
-            "type": "user",
-            "message": {
-                "role": "user",
-                "content": [{"type": "text", "text": text}]
-            }
-        });
+    pub async fn send(&self, text: &str, engine: &Engine) -> Result<(), String> {
+        let adapter = adapters::create_adapter(engine);
+        let formatted = adapter.format_user_prompt(text);
         self.stdin_tx
-            .send(msg.to_string())
+            .send(formatted)
             .await
             .map_err(|e| format!("Failed to send to stdin: {}", e))
     }

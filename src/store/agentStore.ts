@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import type { Agent, AgentStatus } from "../types/agent";
+import type { Agent, AgentStatus, Engine, EngineInfo } from "../types/agent";
 import type {
   AgentMessageEvent,
   StatusChangeEvent,
@@ -51,8 +51,10 @@ interface AgentStore {
     name: string,
     cwd: string,
     model?: string,
-    permissionMode?: string
+    permissionMode?: string,
+    engine?: Engine
   ) => Promise<string>;
+  detectEngines: () => Promise<EngineInfo[]>;
   sendPrompt: (agentId: string, text: string) => Promise<void>;
   stopAgent: (agentId: string) => Promise<void>;
   killAgent: (agentId: string) => Promise<void>;
@@ -252,12 +254,13 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
     }
   },
 
-  createAgent: async (name, cwd, model, permissionMode) => {
+  createAgent: async (name, cwd, model, permissionMode, engine) => {
     const result = await invoke<{ agent_id: string; session_id: string }>("create_agent", {
       name,
       cwd,
       model: model || null,
       permissionMode: permissionMode || null,
+      engine: engine || "claude",
     });
 
     const agent: Agent = {
@@ -267,6 +270,7 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
         cwd,
         model,
         permission_mode: permissionMode || "bypassPermissions",
+        engine: engine || "claude",
       },
       status: "idle",
       session_id: result.session_id,
@@ -283,6 +287,10 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
 
     toast.success("Agent created");
     return result.agent_id;
+  },
+
+  detectEngines: async () => {
+    return invoke<EngineInfo[]>("detect_engines");
   },
 
   sendPrompt: async (agentId, text) => {

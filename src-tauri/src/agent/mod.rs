@@ -1,3 +1,4 @@
+pub mod adapters;
 pub mod manager;
 pub mod process;
 pub mod state;
