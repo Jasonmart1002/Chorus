@@ -322,7 +322,7 @@ export function AgentCard({
               alignItems: "center",
               gap: 2,
               fontSize: 9,
-              color: agent.config.engine === "codex" ? "#a6e3a1" : "#89b4fa",
+              color: theme.sapphire,
               fontFamily: theme.fontBody,
               fontWeight: 700,
               flexShrink: 0,

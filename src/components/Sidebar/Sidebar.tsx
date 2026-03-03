@@ -14,10 +14,10 @@ import type { SDKMessage } from "../../types/messages";
 
 const DRAG_THRESHOLD = 5;
 
-const FILTERS: { label: string; value: StatusFilter }[] = [
-  { label: "All", value: "all" },
-  { label: "Active", value: "active" },
-  { label: "Attention", value: "attention" },
+const FILTERS: { label: string; value: StatusFilter; colorKey: "lavender" | "teal" | "pink" }[] = [
+  { label: "All", value: "all", colorKey: "lavender" },
+  { label: "Active", value: "active", colorKey: "teal" },
+  { label: "Attention", value: "attention", colorKey: "pink" },
 ];
 
 /** Sidebar content shown during vibe mode — focused current agent + queue */
@@ -669,15 +669,15 @@ export function Sidebar({ onNewAgent }: Props) {
           style={
             viewMode === "skills"
               ? {
-                  background: theme.mintLight,
-                  color: theme.mint,
-                  border: `2px solid ${theme.mint}`,
+                  background: theme.sapphire + "22",
+                  color: theme.sapphire,
+                  border: `2px solid ${theme.sapphire}`,
                   boxShadow: theme.shadowChunky,
                   borderRadius: theme.borderRadiusSm,
                 }
               : { borderRadius: theme.borderRadiusSm }
           }
-          hoverColor={theme.mint}
+          hoverColor={theme.sapphire}
         />
         <IconButton
           icon={<Timer size={14} strokeWidth={2.2} />}
@@ -763,6 +763,9 @@ export function Sidebar({ onNewAgent }: Props) {
             <div style={{ display: "flex", gap: 5 }}>
               {FILTERS.map((f) => {
                 const isActive = statusFilter === f.value;
+                const filterColor = theme[f.colorKey];
+                const filterLightKey = `${f.colorKey}Light` as keyof typeof theme;
+                const filterLightColor = theme[filterLightKey] as string || theme.pinkLight;
                 return (
                   <button
                     key={f.value}
@@ -770,12 +773,12 @@ export function Sidebar({ onNewAgent }: Props) {
                     style={{
                       flex: 1,
                       padding: "5px 0",
-                      background: isActive ? theme.pinkLight : theme.bgCard,
+                      background: isActive ? filterLightColor : theme.bgCard,
                       border: isActive
-                        ? `2px solid ${theme.pink}`
+                        ? `2px solid ${filterColor}`
                         : `2px solid ${theme.borderColor}`,
                       borderRadius: theme.borderRadiusFull,
-                      color: isActive ? theme.textPrimary : theme.textSecondary,
+                      color: isActive ? filterColor : theme.textSecondary,
                       fontSize: 11,
                       fontWeight: 700,
                       fontFamily: theme.fontHeading,

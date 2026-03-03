@@ -14,16 +14,35 @@ export interface ThemeColors {
   textSecondary: string;
   textMuted: string;
 
-  // Accents
+  // Core accents (original)
   pink: string;
   pinkLight: string;
   mint: string;
   mintLight: string;
-  peach: string;
+  peach: string;       // Note: maps to Catppuccin Red for error/danger states
   peachLight: string;
   gold: string;
   goldLight: string;
   lavender: string;
+
+  // Full Catppuccin accent palette
+  rosewater: string;
+  flamingo: string;
+  mauve: string;
+  teal: string;
+  sky: string;
+  sapphire: string;
+  blue: string;
+  maroon: string;
+
+  // Light variants for additional accents
+  lavenderLight: string;
+  tealLight: string;
+  mauveLight: string;
+  skyLight: string;
+  blueLight: string;
+  rosewaterLight: string;
+  flamingoLight: string;
 
   // Tab pastels (rotating per agent)
   pastel0: string;
@@ -57,6 +76,8 @@ export interface ThemeColors {
 
   // Decorative
   accentGradient: string;
+  warmGradient: string;
+  coolGradient: string;
   dotPattern: string;
   cardHover: string;
 
@@ -92,24 +113,43 @@ export const lightTheme: ThemeColors = {
   textSecondary: "#5c5f77", // Subtext1
   textMuted: "#9ca0b0",    // Overlay0
 
-  // Accents
+  // Core accents
   pink: "#ea76cb",         // Pink
   pinkLight: "#f2dce8",    // Pink blended over Base
   mint: "#40a02b",         // Green
   mintLight: "#ddf0d8",    // Green blended over Base
-  peach: "#d20f39",        // Red
+  peach: "#d20f39",        // Red (used for error/danger)
   peachLight: "#f0d5da",   // Red blended over Base
   gold: "#df8e1d",         // Yellow
   goldLight: "#f0e4cf",    // Yellow blended over Base
   lavender: "#7287fd",     // Lavender
 
-  // Tab pastels -- Mocha accents used as pastels
-  pastel0: "#f5c2e7",
-  pastel1: "#b4befe",
-  pastel2: "#a6e3a1",
-  pastel3: "#fab387",
-  pastel4: "#89dceb",
-  pastel5: "#f2cdcd",
+  // Full Catppuccin Latte accents
+  rosewater: "#dc8a78",
+  flamingo: "#dd7878",
+  mauve: "#8839ef",
+  teal: "#179299",
+  sky: "#04a5e5",
+  sapphire: "#209fb5",
+  blue: "#1e66f5",
+  maroon: "#e64553",
+
+  // Light variants (accent blended ~15% over Base)
+  lavenderLight: "#dde0f8",
+  tealLight: "#d5edea",
+  mauveLight: "#e3d5f8",
+  skyLight: "#d1ecf6",
+  blueLight: "#d5e1fa",
+  rosewaterLight: "#f2e5e1",
+  flamingoLight: "#f2dfdf",
+
+  // Tab pastels -- softer tints over Latte Base
+  pastel0: "#fae4f4",      // Pink tint
+  pastel1: "#dde2fc",      // Lavender tint
+  pastel2: "#d9f0d5",      // Green tint
+  pastel3: "#fde4d2",      // Peach tint (warm orange)
+  pastel4: "#d2eef6",      // Sky tint
+  pastel5: "#f5e0dc",      // Rosewater (naturally pastel)
 
   // Fonts
   fontHeading: "'Space Grotesk', sans-serif",
@@ -135,6 +175,8 @@ export const lightTheme: ThemeColors = {
 
   // Decorative
   accentGradient: "linear-gradient(135deg, #ea76cb 0%, #8839ef 50%, #7287fd 100%)", // Pink→Mauve→Lavender
+  warmGradient: "linear-gradient(135deg, #dc8a78 0%, #fe640b 50%, #df8e1d 100%)",   // Rosewater→Peach→Yellow
+  coolGradient: "linear-gradient(135deg, #179299 0%, #1e66f5 50%, #7287fd 100%)",   // Teal→Blue→Lavender
   dotPattern: "radial-gradient(circle, #bcc0cc 1px, transparent 1px)", // Surface1
   cardHover: "#dce0e8",   // Crust
 
@@ -170,24 +212,43 @@ export const darkTheme: ThemeColors = {
   textSecondary: "#bac2de", // Subtext1
   textMuted: "#6c7086",    // Overlay0
 
-  // Accents
+  // Core accents
   pink: "#f5c2e7",         // Pink
   pinkLight: "#2e2035",    // Pink on dark blend
   mint: "#a6e3a1",         // Green
   mintLight: "#1e2e20",    // Green on dark blend
-  peach: "#f38ba8",        // Red
+  peach: "#f38ba8",        // Red (used for error/danger)
   peachLight: "#2e2025",   // Red on dark blend
   gold: "#f9e2af",         // Yellow
   goldLight: "#2e2a1e",    // Yellow on dark blend
   lavender: "#b4befe",     // Lavender
 
-  // Tab pastels -- dark tinted jewel tones
-  pastel0: "#352535",
-  pastel1: "#2d2b45",
-  pastel2: "#253530",
-  pastel3: "#352d25",
-  pastel4: "#253545",
-  pastel5: "#352530",
+  // Full Catppuccin Mocha accents
+  rosewater: "#f5e0dc",
+  flamingo: "#f2cdcd",
+  mauve: "#cba6f7",
+  teal: "#94e2d5",
+  sky: "#89dceb",
+  sapphire: "#74c7ec",
+  blue: "#89b4fa",
+  maroon: "#eba0ac",
+
+  // Light variants (accent tinted on dark surface)
+  lavenderLight: "#252540",
+  tealLight: "#1e2e2c",
+  mauveLight: "#2a2040",
+  skyLight: "#1e2e38",
+  blueLight: "#1e2840",
+  rosewaterLight: "#2e2525",
+  flamingoLight: "#2e2228",
+
+  // Tab pastels -- richer dark jewel tones
+  pastel0: "#382040",      // Pink deep
+  pastel1: "#2c2848",      // Lavender deep
+  pastel2: "#1e3828",      // Green deep
+  pastel3: "#382c1e",      // Peach deep (warm)
+  pastel4: "#1e3548",      // Sky deep
+  pastel5: "#382228",      // Flamingo deep
 
   // Fonts
   fontHeading: "'Space Grotesk', sans-serif",
@@ -213,6 +274,8 @@ export const darkTheme: ThemeColors = {
 
   // Decorative
   accentGradient: "linear-gradient(135deg, #f5c2e7 0%, #cba6f7 50%, #89b4fa 100%)", // Pink→Mauve→Blue
+  warmGradient: "linear-gradient(135deg, #f5e0dc 0%, #fab387 50%, #f9e2af 100%)",   // Rosewater→Peach→Yellow
+  coolGradient: "linear-gradient(135deg, #94e2d5 0%, #89b4fa 50%, #b4befe 100%)",   // Teal→Blue→Lavender
   dotPattern: "radial-gradient(circle, #313244 1px, transparent 1px)", // Surface0
   cardHover: "#45475a",   // Surface1
 

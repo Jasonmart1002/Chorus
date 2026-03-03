@@ -166,7 +166,7 @@ function AutomationCard({
             left: 0,
             right: 0,
             height: 3,
-            background: `linear-gradient(90deg, ${theme.mint}, ${theme.lavender}, ${theme.mint})`,
+            background: `linear-gradient(90deg, ${theme.teal}, ${theme.sky}, ${theme.teal})`,
             backgroundSize: "200% 100%",
             animation: "shimmer 2s linear infinite",
           }}
@@ -338,7 +338,7 @@ function AutomationCard({
             gap: 5,
             padding: "3px 10px",
             borderRadius: theme.borderRadiusFull,
-            background: `${theme.lavender}22`,
+            background: `${theme.sky}22`,
             border: `2px solid ${theme.borderStrong}`,
             fontSize: 10,
             fontWeight: 800,
@@ -348,9 +348,9 @@ function AutomationCard({
           }}
         >
           {automation.target.agent_id ? (
-            <Bot size={10} strokeWidth={2.5} color={theme.lavender} />
+            <Bot size={10} strokeWidth={2.5} color={theme.sky} />
           ) : (
-            <Folder size={10} strokeWidth={2.5} color={theme.lavender} />
+            <Folder size={10} strokeWidth={2.5} color={theme.sky} />
           )}
           {targetLabel}
         </span>

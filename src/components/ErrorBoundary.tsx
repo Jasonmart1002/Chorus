@@ -25,6 +25,14 @@ export class ErrorBoundary extends React.Component<Props, State> {
 
   render() {
     if (this.state.hasError) {
+      // Detect theme from body class to stay in sync
+      const isDark = typeof document !== "undefined" && document.body.classList.contains("theme-dark");
+
+      // Catppuccin Latte (light) / Mocha (dark) tokens
+      const c = isDark
+        ? { base: "#1e1e2e", surface: "#313244", surface1: "#45475a", text: "#cdd6f4", subtext: "#bac2de", red: "#f38ba8", peach: "#fab387", crust: "#11111b" }
+        : { base: "#eff1f5", surface: "#e6e9ef", surface1: "#ccd0da", text: "#4c4f69", subtext: "#5c5f77", red: "#d20f39", peach: "#fe640b", crust: "#9ca0b0" };
+
       return (
         <div
           style={{
@@ -33,19 +41,19 @@ export class ErrorBoundary extends React.Component<Props, State> {
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            background: "#1e1e2e",
+            background: c.base,
             fontFamily: "'Nunito', sans-serif",
           }}
         >
           <div
             style={{
-              background: "#313244",
+              background: c.surface,
               borderRadius: 16,
               padding: 32,
               maxWidth: 480,
               width: "90vw",
-              border: "1px solid #fab387",
-              boxShadow: "4px 6px 0 #11111b",
+              border: `2px solid ${c.text}`,
+              boxShadow: `4px 6px 0 ${c.crust}`,
               textAlign: "center",
             }}
           >
@@ -54,13 +62,14 @@ export class ErrorBoundary extends React.Component<Props, State> {
                 width: 48,
                 height: 48,
                 borderRadius: "50%",
-                background: "#45475a",
+                background: c.surface1,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
                 margin: "0 auto 16px",
                 fontSize: 24,
-                color: "#f38ba8",
+                fontWeight: 700,
+                color: c.red,
               }}
             >
               !
@@ -70,7 +79,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
                 margin: "0 0 8px",
                 fontSize: 18,
                 fontWeight: 700,
-                color: "#cdd6f4",
+                color: c.text,
                 fontFamily: "'Space Grotesk', sans-serif",
               }}
             >
@@ -80,7 +89,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
               style={{
                 margin: "0 0 20px",
                 fontSize: 13,
-                color: "#bac2de",
+                color: c.subtext,
                 lineHeight: 1.5,
                 fontFamily: "'Nunito', sans-serif",
               }}
@@ -91,14 +100,15 @@ export class ErrorBoundary extends React.Component<Props, State> {
               onClick={() => window.location.reload()}
               style={{
                 padding: "8px 24px",
-                background: "#fab387",
-                border: "none",
+                background: c.peach,
+                border: `2px solid ${c.text}`,
                 borderRadius: 10,
-                color: "#1e1e2e",
+                color: c.base,
                 fontSize: 13,
-                fontWeight: 600,
+                fontWeight: 700,
                 cursor: "pointer",
                 fontFamily: "'Space Grotesk', sans-serif",
+                boxShadow: `3px 3px 0 ${c.crust}`,
               }}
             >
               Reload

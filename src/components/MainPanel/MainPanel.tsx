@@ -60,8 +60,8 @@ export function MainPanel() {
             width: 200,
             height: 200,
             borderRadius: theme.borderRadiusFull,
-            background: theme.accentGradient,
-            opacity: 0.12,
+            background: theme.warmGradient,
+            opacity: 0.15,
             filter: "blur(60px)",
             pointerEvents: "none",
           }}
@@ -74,7 +74,7 @@ export function MainPanel() {
             width: 80,
             height: 80,
             borderRadius: theme.borderRadiusXl,
-            background: theme.pinkLight,
+            background: theme.mauveLight,
             border: `3px solid ${theme.borderStrong}`,
             boxShadow: theme.shadowChunky,
             display: "flex",
@@ -85,7 +85,7 @@ export function MainPanel() {
           <Bot
             size={40}
             strokeWidth={2}
-            color={theme.pink}
+            color={theme.mauve}
           />
         </div>
 
@@ -96,7 +96,7 @@ export function MainPanel() {
             fontWeight: 700,
             fontFamily: theme.fontHeading,
             color: theme.textPrimary,
-            textShadow: `2px 2px 0px ${theme.pinkLight}`,
+            textShadow: `2px 2px 0px ${theme.mauveLight}`,
             letterSpacing: "-0.02em",
           }}
         >

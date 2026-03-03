@@ -141,9 +141,9 @@ export function NewAgentDialog({ onClose }: Props) {
                   style={{
                     flex: 1,
                     padding: "8px 6px",
-                    background: selected ? `${theme.lavender}22` : theme.bgBase,
+                    background: selected ? `${theme.mauve}22` : theme.bgBase,
                     border: selected
-                      ? `2px solid ${theme.lavender}`
+                      ? `2px solid ${theme.mauve}`
                       : `2px solid ${theme.borderStrong}`,
                     borderRadius: theme.borderRadiusSm,
                     cursor: "pointer",
@@ -161,7 +161,7 @@ export function NewAgentDialog({ onClose }: Props) {
                       fontSize: 12,
                       fontWeight: 700,
                       fontFamily: theme.fontHeading,
-                      color: selected ? theme.lavender : theme.textPrimary,
+                      color: selected ? theme.mauve : theme.textPrimary,
                       letterSpacing: "0.01em",
                     }}
                   >

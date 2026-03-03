@@ -156,16 +156,12 @@ export function ContextSummary({ agent }: Props) {
         {/* Info pills */}
         <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
           <span style={pillStyle}>
-            <Zap size={11} color={
-              agent.config.engine === "codex" ? "#a6e3a1" :
-              agent.config.engine === "gemini" ? "#89b4fa" :
-              theme.lavender
-            } />
+            <Zap size={11} color={theme.sapphire} />
             {ENGINE_LABELS[agent.config.engine] || "Claude Code"}
           </span>
 
           <span style={pillStyle}>
-            <Folder size={11} color={theme.peach} />
+            <Folder size={11} color={theme.rosewater} />
             <span style={{ maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis" }}>
               {agent.config.cwd}
             </span>
@@ -173,14 +169,14 @@ export function ContextSummary({ agent }: Props) {
 
           {agent.num_turns > 0 && (
             <span style={pillStyle}>
-              <RotateCw size={11} color={theme.mint} />
+              <RotateCw size={11} color={theme.teal} />
               {agent.num_turns} turns
             </span>
           )}
 
           {agent.config.model && (
             <span style={pillStyle}>
-              <Cpu size={11} color={theme.lavender} />
+              <Cpu size={11} color={theme.mauve} />
               {agent.config.model}
             </span>
           )}
@@ -201,9 +197,9 @@ export function ContextSummary({ agent }: Props) {
                 tooltip="Open terminal"
                 onClick={() => setShowTermMenu(!showTermMenu)}
                 variant="tinted"
-                tintColor={theme.lavender}
+                tintColor={theme.sky}
                 size="md"
-                style={actionBtnStyle(theme.lavender)}
+                style={actionBtnStyle(theme.sky)}
               />
             }
             open={showTermMenu}
@@ -237,10 +233,10 @@ export function ContextSummary({ agent }: Props) {
                 tooltip="Git actions"
                 onClick={() => setShowGitMenu(!showGitMenu)}
                 variant="tinted"
-                tintColor={theme.peach}
+                tintColor={theme.flamingo}
                 disabled={!canSend}
                 size="md"
-                style={actionBtnStyle(theme.peach)}
+                style={actionBtnStyle(theme.flamingo)}
               />
             }
             open={showGitMenu}

@@ -81,7 +81,7 @@ export function PromptInput({ agentId, disabled }: Props) {
   const currentColor = currentMode.getColor(theme.pink, theme.gold);
   const canSend = !!(text.trim() && !disabled);
 
-  const borderColor = isFocused ? theme.pink : theme.borderStrong;
+  const borderColor = isFocused ? theme.mauve : theme.borderStrong;
 
   return (
     <div

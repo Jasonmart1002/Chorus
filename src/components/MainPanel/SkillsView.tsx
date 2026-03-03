@@ -575,7 +575,7 @@ export function SkillsView() {
       >
         <Loader
           size={24}
-          color={theme.mint}
+          color={theme.sapphire}
           strokeWidth={2.5}
           style={{ animation: "spin 1s linear infinite" }}
         />
@@ -608,8 +608,8 @@ export function SkillsView() {
             width: 200,
             height: 200,
             borderRadius: theme.borderRadiusFull,
-            background: theme.accentGradient,
-            opacity: 0.12,
+            background: theme.coolGradient,
+            opacity: 0.15,
             filter: "blur(60px)",
             pointerEvents: "none",
           }}
@@ -621,7 +621,7 @@ export function SkillsView() {
             width: 80,
             height: 80,
             borderRadius: theme.borderRadiusXl,
-            background: theme.mintLight,
+            background: theme.blueLight,
             border: `3px solid ${theme.borderStrong}`,
             boxShadow: theme.shadowChunky,
             display: "flex",
@@ -629,7 +629,7 @@ export function SkillsView() {
             justifyContent: "center",
           }}
         >
-          <Blocks size={40} strokeWidth={2} color={theme.mint} />
+          <Blocks size={40} strokeWidth={2} color={theme.sapphire} />
         </div>
 
         <div
@@ -638,7 +638,7 @@ export function SkillsView() {
             fontWeight: 700,
             fontFamily: theme.fontHeading,
             color: theme.textPrimary,
-            textShadow: `2px 2px 0px ${theme.mintLight}`,
+            textShadow: `2px 2px 0px ${theme.blueLight}`,
             letterSpacing: "-0.02em",
           }}
         >
@@ -704,7 +704,7 @@ export function SkillsView() {
               width: 36,
               height: 36,
               borderRadius: theme.borderRadiusSm,
-              background: theme.mintLight,
+              background: theme.blueLight,
               border: `2.5px solid ${theme.borderStrong}`,
               boxShadow: theme.shadowChunky,
               display: "flex",
@@ -713,7 +713,7 @@ export function SkillsView() {
               flexShrink: 0,
             }}
           >
-            <Blocks size={18} color={theme.mint} strokeWidth={2.2} />
+            <Blocks size={18} color={theme.sapphire} strokeWidth={2.2} />
           </div>
           <div>
             <div
@@ -795,7 +795,7 @@ export function SkillsView() {
             }
             tooltip="Refresh"
             onClick={fetchSkills}
-            hoverColor={theme.mint}
+            hoverColor={theme.sapphire}
           />
         </div>
       </div>

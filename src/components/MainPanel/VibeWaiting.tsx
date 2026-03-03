@@ -6,7 +6,7 @@ import { PASTEL_KEYS } from "../../lib/theme";
 import { getDisplayName } from "../../lib/sortAgents";
 import type { Agent, AgentStatus } from "../../types/agent";
 
-const EQUALIZER_COLORS_KEYS = ["pink", "lavender", "mint", "gold", "peach"] as const;
+const EQUALIZER_COLORS_KEYS = ["pink", "mauve", "sapphire", "teal", "gold"] as const;
 
 function statusLabel(status: AgentStatus): string {
   switch (status) {
