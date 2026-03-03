@@ -79,7 +79,7 @@ A focused workflow for handling multiple agents that need attention. Toggle it w
 Built-in shortcuts for the most common Git workflows: **view diffs** (unstaged, staged, or vs. main), **commit**, **create PRs**, **push**, and **stash** — all without leaving the app.
 
 ### Run Shell Commands
-Execute arbitrary commands in any agent's working directory with live stdout/stderr streaming. Includes presets for npm, yarn, pnpm, and bun. Command history is saved per directory.
+Execute arbitrary commands in any agent's working directory with live stdout/stderr streaming. Includes presets for npm, yarn, pnpm, and bun. Your last command is remembered per directory.
 
 ### Terminal Handoff
 Need to go deeper? Open a native terminal at any agent's directory, or launch an interactive `claude --resume` session that picks up exactly where the agent left off.
