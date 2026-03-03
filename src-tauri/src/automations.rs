@@ -51,6 +51,8 @@ impl DayOfWeek {
 pub struct AutomationSchedule {
     pub frequency: ScheduleFrequency,
     pub days: Vec<DayOfWeek>,
+    #[serde(default)]
+    pub dates: Vec<u32>, // 1–31, used for monthly
     pub time: String, // "HH:MM" 24h
     pub custom_interval_minutes: Option<u32>,
 }
@@ -229,18 +231,18 @@ pub fn compute_next_run(schedule: &AutomationSchedule) -> Option<String> {
             best.map(|dt| dt.to_rfc3339())
         }
         ScheduleFrequency::Monthly => {
-            if schedule.days.is_empty() {
+            if schedule.dates.is_empty() {
                 return None;
             }
             let (h, m) = parse_time(&schedule.time)?;
             let target_time = NaiveTime::from_hms_opt(h, m, 0)?;
 
-            // Find the next matching weekday this month or next
+            // Find the next matching date-of-month within the next 62 days
             let mut best: Option<chrono::DateTime<Local>> = None;
             for offset in 0..62 {
                 let candidate_date = (now + chrono::Duration::days(offset)).date_naive();
-                let candidate_weekday = candidate_date.weekday();
-                let matches = schedule.days.iter().any(|d| d.to_chrono() == candidate_weekday);
+                let day_of_month = candidate_date.day();
+                let matches = schedule.dates.iter().any(|&d| d == day_of_month);
                 if matches {
                     let candidate_dt = candidate_date.and_time(target_time);
                     let candidate = Local.from_local_datetime(&candidate_dt).earliest()?;

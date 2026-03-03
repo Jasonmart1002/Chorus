@@ -27,19 +27,20 @@ function formatSchedule(automation: Automation): string {
   const time = formatTime(schedule.time);
 
   switch (schedule.frequency) {
-    case "daily": {
-      const days = schedule.days.length > 0 && schedule.days.length < 7
-        ? schedule.days.join(", ")
-        : null;
-      return days ? `${days} at ${time}` : `Daily at ${time}`;
-    }
+    case "daily":
+      return `Daily at ${time}`;
     case "weekly": {
       const days = schedule.days.join(", ");
       return `${days} at ${time}`;
     }
     case "monthly": {
-      const days = schedule.days.join(", ");
-      return `Monthly ${days} at ${time}`;
+      const ordinal = (n: number) => {
+        const s = ["th", "st", "nd", "rd"];
+        const v = n % 100;
+        return n + (s[(v - 20) % 10] || s[v] || s[0]);
+      };
+      const dateStr = (schedule.dates || []).map(ordinal).join(", ");
+      return dateStr ? `${dateStr} at ${time}` : `Monthly at ${time}`;
     }
     case "custom": {
       const mins = schedule.custom_interval_minutes ?? 60;

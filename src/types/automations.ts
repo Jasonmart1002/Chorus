@@ -5,6 +5,7 @@ export type DayOfWeek = "Mo" | "Tu" | "We" | "Th" | "Fr" | "Sa" | "Su";
 export interface AutomationSchedule {
   frequency: ScheduleFrequency;
   days: DayOfWeek[];
+  dates: number[]; // 1–31, used for monthly
   time: string; // HH:MM (24h)
   custom_interval_minutes?: number;
 }

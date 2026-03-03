@@ -48,6 +48,9 @@ export function CreateAutomationDialog({ editingId, onClose }: Props) {
   const [days, setDays] = useState<DayOfWeek[]>(
     editing?.schedule.days || []
   );
+  const [dates, setDates] = useState<number[]>(
+    editing?.schedule.dates || []
+  );
   const [time, setTime] = useState(editing?.schedule.time || "09:00");
   const [customMinutes, setCustomMinutes] = useState(() => {
     const raw = editing?.schedule.custom_interval_minutes ?? 60;
@@ -110,12 +113,19 @@ export function CreateAutomationDialog({ editingId, onClose }: Props) {
     );
   };
 
+  const toggleDate = (date: number) => {
+    setDates((prev) =>
+      prev.includes(date) ? prev.filter((d) => d !== date) : [...prev, date].sort((a, b) => a - b)
+    );
+  };
+
   const handleSubmit = async () => {
     if (!name.trim() || !prompt.trim()) return;
 
     const schedule: AutomationSchedule = {
       frequency,
       days,
+      dates,
       time,
       custom_interval_minutes:
         frequency === "custom"
@@ -264,8 +274,8 @@ export function CreateAutomationDialog({ editingId, onClose }: Props) {
           </select>
         </label>
 
-        {/* Days of week — shown for daily, weekly & monthly */}
-        {(frequency === "daily" || frequency === "weekly" || frequency === "monthly") && (
+        {/* Days of week — shown for weekly */}
+        {frequency === "weekly" && (
           <div>
             <span style={labelStyle}>Days</span>
             <div style={{ display: "flex", gap: 5 }}>
@@ -295,6 +305,49 @@ export function CreateAutomationDialog({ editingId, onClose }: Props) {
                     }}
                   >
                     {day}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Dates of month — shown for monthly */}
+        {frequency === "monthly" && (
+          <div>
+            <span style={labelStyle}>Dates</span>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(7, 1fr)",
+                gap: 4,
+              }}
+            >
+              {Array.from({ length: 31 }, (_, i) => i + 1).map((date) => {
+                const active = dates.includes(date);
+                return (
+                  <button
+                    key={date}
+                    type="button"
+                    onClick={() => toggleDate(date)}
+                    style={{
+                      padding: "6px 0",
+                      borderRadius: theme.borderRadiusSm,
+                      background: active ? theme.goldLight : theme.bgBase,
+                      border: active
+                        ? `2px solid ${theme.gold}`
+                        : `2px solid ${theme.borderStrong}`,
+                      color: active ? theme.textPrimary : theme.textMuted,
+                      fontSize: 11,
+                      fontWeight: 800,
+                      fontFamily: theme.fontHeading,
+                      cursor: "pointer",
+                      transition: `all 0.15s ${theme.easeSpring}`,
+                      transform: active ? "scale(1.05)" : "scale(1)",
+                      boxShadow: active ? theme.shadowPress : "none",
+                    }}
+                  >
+                    {date}
                   </button>
                 );
               })}
