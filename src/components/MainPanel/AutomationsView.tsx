@@ -4,11 +4,15 @@ import {
   Plus,
   Search,
   Play,
+  Square,
   Pencil,
   Trash2,
   Clock,
   Bot,
   Folder,
+  Eye,
+  Loader2,
+  ShieldOff,
 } from "lucide-react";
 import { useAutomationsStore } from "../../store/automationsStore";
 import { useThemeStore } from "../../store/themeStore";
@@ -23,8 +27,12 @@ function formatSchedule(automation: Automation): string {
   const time = formatTime(schedule.time);
 
   switch (schedule.frequency) {
-    case "daily":
-      return `Daily at ${time}`;
+    case "daily": {
+      const days = schedule.days.length > 0 && schedule.days.length < 7
+        ? schedule.days.join(", ")
+        : null;
+      return days ? `${days} at ${time}` : `Daily at ${time}`;
+    }
     case "weekly": {
       const days = schedule.days.join(", ");
       return `${days} at ${time}`;
@@ -33,8 +41,14 @@ function formatSchedule(automation: Automation): string {
       const days = schedule.days.join(", ");
       return `Monthly ${days} at ${time}`;
     }
-    case "custom":
-      return `Every ${schedule.custom_interval_minutes ?? 60} min`;
+    case "custom": {
+      const mins = schedule.custom_interval_minutes ?? 60;
+      if (mins >= 60 && mins % 60 === 0) {
+        const hrs = mins / 60;
+        return `Every ${hrs} hr${hrs !== 1 ? "s" : ""}`;
+      }
+      return `Every ${mins} min`;
+    }
   }
 }
 
@@ -71,6 +85,28 @@ function relativeTimeFuture(iso: string): string {
   return `in ${days}d`;
 }
 
+function useElapsed(startIso: string | undefined) {
+  const [elapsed, setElapsed] = useState("");
+  useEffect(() => {
+    if (!startIso) {
+      setElapsed("");
+      return;
+    }
+    const tick = () => {
+      const diff = Math.floor(
+        (Date.now() - new Date(startIso).getTime()) / 1000
+      );
+      const m = Math.floor(diff / 60);
+      const s = diff % 60;
+      setElapsed(m > 0 ? `${m}m ${s}s` : `${s}s`);
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [startIso]);
+  return elapsed;
+}
+
 function AutomationCard({
   automation,
   index,
@@ -81,9 +117,17 @@ function AutomationCard({
   const theme = useThemeStore((s) => s.current);
   const toggleEnabled = useAutomationsStore((s) => s.toggleEnabled);
   const runNow = useAutomationsStore((s) => s.runNow);
+  const stopAutomation = useAutomationsStore((s) => s.stopAutomation);
+  const viewOutput = useAutomationsStore((s) => s.viewOutput);
   const deleteAutomation = useAutomationsStore((s) => s.deleteAutomation);
   const setEditingId = useAutomationsStore((s) => s.setEditingId);
+  const running = useAutomationsStore(
+    (s) => s.runningAutomations[automation.id]
+  );
   const [hovered, setHovered] = useState(false);
+  const elapsed = useElapsed(running?.started_at);
+
+  const isRunning = !!running;
 
   const targetLabel = automation.target.agent_id
     ? automation.target.agent_name || automation.target.agent_id.slice(0, 8)
@@ -97,7 +141,7 @@ function AutomationCard({
       onPointerLeave={() => setHovered(false)}
       style={{
         background: automation.enabled ? theme.bgCard : `${theme.bgCard}88`,
-        border: `2.5px solid ${theme.borderStrong}`,
+        border: `2.5px solid ${isRunning ? theme.mint : theme.borderStrong}`,
         borderRadius: theme.borderRadiusSm,
         boxShadow: hovered ? theme.shadowHover : theme.shadowChunky,
         padding: "16px",
@@ -108,9 +152,27 @@ function AutomationCard({
         transition: `all 0.2s ${theme.easeSpring}`,
         transform: hovered ? "translate(-2px, -2px)" : "none",
         animation: `springIn 0.35s ${theme.easeSpring} ${index * 0.05}s backwards`,
+        position: "relative",
+        overflow: "hidden",
       }}
     >
-      {/* Top row: name + toggle */}
+      {/* Running glow bar at top */}
+      {isRunning && (
+        <div
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            height: 3,
+            background: `linear-gradient(90deg, ${theme.mint}, ${theme.lavender}, ${theme.mint})`,
+            backgroundSize: "200% 100%",
+            animation: "shimmer 2s linear infinite",
+          }}
+        />
+      )}
+
+      {/* Top row: name + running indicator + toggle */}
       <div
         style={{
           display: "flex",
@@ -121,57 +183,131 @@ function AutomationCard({
       >
         <div
           style={{
-            fontSize: 16,
-            fontWeight: 800,
-            fontFamily: theme.fontHeading,
-            color: theme.textPrimary,
-            letterSpacing: "-0.02em",
-            lineHeight: 1.2,
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
             flex: 1,
             minWidth: 0,
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
           }}
         >
-          {automation.name}
-        </div>
-
-        {/* Enabled toggle */}
-        <button
-          onClick={() => toggleEnabled(automation.id)}
-          title={automation.enabled ? "Disable" : "Enable"}
-          style={{
-            width: 40,
-            height: 22,
-            borderRadius: theme.borderRadiusFull,
-            background: automation.enabled ? theme.gold : theme.bgBase,
-            border: `2px solid ${automation.enabled ? theme.gold : theme.borderStrong}`,
-            cursor: "pointer",
-            position: "relative",
-            transition: `all 0.2s ${theme.easeSpring}`,
-            flexShrink: 0,
-            padding: 0,
-          }}
-        >
+          {isRunning && (
+            <Loader2
+              size={14}
+              strokeWidth={2.5}
+              color={theme.mint}
+              style={{ animation: "spin 1s linear infinite", flexShrink: 0 }}
+            />
+          )}
           <div
             style={{
-              width: 14,
-              height: 14,
-              borderRadius: "50%",
-              background: automation.enabled ? theme.textOnAccent : theme.textMuted,
-              position: "absolute",
-              top: 2,
-              left: automation.enabled ? 20 : 2,
-              transition: `all 0.2s ${theme.easeSpring}`,
-              boxShadow: "0 1px 2px rgba(0,0,0,0.15)",
+              fontSize: 16,
+              fontWeight: 800,
+              fontFamily: theme.fontHeading,
+              color: theme.textPrimary,
+              letterSpacing: "-0.02em",
+              lineHeight: 1.2,
+              flex: 1,
+              minWidth: 0,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
             }}
-          />
-        </button>
+          >
+            {automation.name}
+          </div>
+        </div>
+
+        {/* Running elapsed badge OR enabled toggle */}
+        {isRunning ? (
+          <span
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 5,
+              padding: "3px 10px",
+              borderRadius: theme.borderRadiusFull,
+              background: `${theme.mint}22`,
+              border: `2px solid ${theme.mint}`,
+              fontSize: 10,
+              fontWeight: 800,
+              fontFamily: theme.fontCode,
+              color: theme.mint,
+              letterSpacing: "0.02em",
+              flexShrink: 0,
+            }}
+          >
+            {elapsed}
+          </span>
+        ) : (
+          <button
+            onClick={() => toggleEnabled(automation.id)}
+            title={automation.enabled ? "Disable" : "Enable"}
+            style={{
+              width: 40,
+              height: 22,
+              borderRadius: theme.borderRadiusFull,
+              background: automation.enabled ? theme.gold : theme.bgBase,
+              border: `2px solid ${automation.enabled ? theme.gold : theme.borderStrong}`,
+              cursor: "pointer",
+              position: "relative",
+              transition: `all 0.2s ${theme.easeSpring}`,
+              flexShrink: 0,
+              padding: 0,
+            }}
+          >
+            <div
+              style={{
+                width: 14,
+                height: 14,
+                borderRadius: "50%",
+                background: automation.enabled
+                  ? theme.textOnAccent
+                  : theme.textMuted,
+                position: "absolute",
+                top: 2,
+                left: automation.enabled ? 20 : 2,
+                transition: `all 0.2s ${theme.easeSpring}`,
+                boxShadow: "0 1px 2px rgba(0,0,0,0.15)",
+              }}
+            />
+          </button>
+        )}
       </div>
 
       {/* Badges row */}
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+        {/* Running badge */}
+        {isRunning && (
+          <span
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 5,
+              padding: "3px 10px",
+              borderRadius: theme.borderRadiusFull,
+              background: `${theme.mint}22`,
+              border: `2px solid ${theme.mint}44`,
+              fontSize: 10,
+              fontWeight: 800,
+              fontFamily: theme.fontHeading,
+              color: theme.mint,
+              letterSpacing: "0.02em",
+              animation: "pulse 2s ease-in-out infinite",
+            }}
+          >
+            <div
+              style={{
+                width: 6,
+                height: 6,
+                borderRadius: "50%",
+                background: theme.mint,
+                boxShadow: `0 0 6px ${theme.mint}`,
+              }}
+            />
+            Running
+          </span>
+        )}
+
         {/* Schedule badge */}
         <span
           style={{
@@ -217,6 +353,29 @@ function AutomationCard({
           )}
           {targetLabel}
         </span>
+
+        {/* Skip permissions badge */}
+        {automation.skip_permissions && (
+          <span
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 5,
+              padding: "3px 10px",
+              borderRadius: theme.borderRadiusFull,
+              background: `${theme.peach}22`,
+              border: `2px solid ${theme.peach}44`,
+              fontSize: 10,
+              fontWeight: 800,
+              fontFamily: theme.fontHeading,
+              color: theme.peach,
+              letterSpacing: "0.02em",
+            }}
+          >
+            <ShieldOff size={10} strokeWidth={2.5} color={theme.peach} />
+            No Permissions
+          </span>
+        )}
       </div>
 
       {/* Prompt preview */}
@@ -263,35 +422,56 @@ function AutomationCard({
             <span>
               Last: {relativeTime(automation.last_run_at)}
               {automation.last_run_status === "error" && (
-                <span style={{ color: theme.peach, marginLeft: 3 }}>(error)</span>
+                <span style={{ color: theme.peach, marginLeft: 3 }}>
+                  (error)
+                </span>
               )}
             </span>
           )}
-          {automation.next_run_at && automation.enabled && (
+          {automation.next_run_at && automation.enabled && !isRunning && (
             <span>Next: {relativeTimeFuture(automation.next_run_at)}</span>
           )}
           <span>Runs: {automation.run_count}</span>
         </div>
 
         <div style={{ display: "flex", gap: 4 }}>
-          <IconButton
-            icon={<Pencil size={12} strokeWidth={2.2} />}
-            tooltip="Edit"
-            onClick={() => setEditingId(automation.id)}
-            hoverColor={theme.gold}
-          />
-          <IconButton
-            icon={<Play size={12} strokeWidth={2.5} />}
-            tooltip="Run Now"
-            onClick={() => runNow(automation.id)}
-            hoverColor={theme.mint}
-          />
-          <IconButton
-            icon={<Trash2 size={12} strokeWidth={2.2} />}
-            tooltip="Delete"
-            onClick={() => deleteAutomation(automation.id)}
-            hoverColor={theme.peach}
-          />
+          {isRunning ? (
+            <>
+              <IconButton
+                icon={<Eye size={12} strokeWidth={2.2} />}
+                tooltip="View Output"
+                onClick={() => viewOutput(automation.id)}
+                hoverColor={theme.lavender}
+              />
+              <IconButton
+                icon={<Square size={12} strokeWidth={2.5} />}
+                tooltip="Stop"
+                onClick={() => stopAutomation(automation.id)}
+                hoverColor={theme.peach}
+              />
+            </>
+          ) : (
+            <>
+              <IconButton
+                icon={<Pencil size={12} strokeWidth={2.2} />}
+                tooltip="Edit"
+                onClick={() => setEditingId(automation.id)}
+                hoverColor={theme.gold}
+              />
+              <IconButton
+                icon={<Play size={12} strokeWidth={2.5} />}
+                tooltip="Run Now"
+                onClick={() => runNow(automation.id)}
+                hoverColor={theme.mint}
+              />
+              <IconButton
+                icon={<Trash2 size={12} strokeWidth={2.2} />}
+                tooltip="Delete"
+                onClick={() => deleteAutomation(automation.id)}
+                hoverColor={theme.peach}
+              />
+            </>
+          )}
         </div>
       </div>
     </div>
@@ -301,6 +481,7 @@ function AutomationCard({
 export function AutomationsView() {
   const theme = useThemeStore((s) => s.current);
   const automations = useAutomationsStore((s) => s.automations);
+  const runningAutomations = useAutomationsStore((s) => s.runningAutomations);
   const loading = useAutomationsStore((s) => s.loading);
   const fetchAutomations = useAutomationsStore((s) => s.fetchAutomations);
   const searchQuery = useAutomationsStore((s) => s.searchQuery);
@@ -308,10 +489,12 @@ export function AutomationsView() {
   const showCreateDialog = useAutomationsStore((s) => s.showCreateDialog);
   const setShowCreateDialog = useAutomationsStore((s) => s.setShowCreateDialog);
   const editingId = useAutomationsStore((s) => s.editingId);
+  const runningCount = Object.keys(runningAutomations).length;
 
   useEffect(() => {
     fetchAutomations();
-  }, [fetchAutomations]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const filtered = useMemo(() => {
     if (!searchQuery) return automations;
@@ -498,6 +681,12 @@ export function AutomationsView() {
               {automations.length} automation
               {automations.length !== 1 ? "s" : ""} &middot;{" "}
               {automations.filter((a) => a.enabled).length} active
+              {runningCount > 0 && (
+                <>
+                  {" "}
+                  &middot; {runningCount} running
+                </>
+              )}
             </div>
           </div>
         </div>

@@ -24,6 +24,7 @@ export interface CommandState {
 interface AgentStore {
   agents: Record<string, Agent>;
   messages: Record<string, SDKMessage[]>;
+  messagesLoaded: Record<string, boolean>; // tracks which agents have loaded saved messages
   attentionSet: Record<string, boolean>;
   selectedAgentId: string | null;
   initialized: boolean;
@@ -59,7 +60,9 @@ interface AgentStore {
   stopAgent: (agentId: string) => Promise<void>;
   killAgent: (agentId: string) => Promise<void>;
   removeAgent: (agentId: string) => Promise<void>;
+  restoreAgent: (agentId: string) => Promise<void>;
   selectAgent: (agentId: string | null) => void;
+  loadMessagesForAgent: (agentId: string) => Promise<void>;
   toggleVibeMode: () => void;
   setVibeMode: (on: boolean) => void;
   vibeSkip: () => void;
@@ -86,9 +89,31 @@ function nextVibeAgent(
   return ids[0];
 }
 
+// Debounced message save — batches rapid updates into single writes per agent
+const savePendingAgents = new Set<string>();
+let saveTimerId: ReturnType<typeof setTimeout> | null = null;
+
+function scheduleSaveMessages(agentId: string) {
+  savePendingAgents.add(agentId);
+  if (saveTimerId) return;
+  saveTimerId = setTimeout(() => {
+    saveTimerId = null;
+    const ids = [...savePendingAgents];
+    savePendingAgents.clear();
+    const state = useAgentStore.getState();
+    for (const id of ids) {
+      const msgs = state.messages[id];
+      if (msgs && msgs.length > 0) {
+        invoke("save_messages", { agentId: id, messages: msgs }).catch(() => {});
+      }
+    }
+  }, 2000);
+}
+
 export const useAgentStore = create<AgentStore>((set, get) => ({
   agents: {},
   messages: {},
+  messagesLoaded: {},
   attentionSet: {},
   selectedAgentId: null,
   initialized: false,
@@ -116,6 +141,9 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
           [agent_id]: [...(state.messages[agent_id] || []), message],
         },
       }));
+
+      // Persist messages to disk (debounced)
+      scheduleSaveMessages(agent_id);
 
       // Notify on context compaction
       if (message.type === "system") {
@@ -315,6 +343,8 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
       }
       return updates;
     });
+    // Persist the user message
+    scheduleSaveMessages(agentId);
     try {
       await invoke("send_prompt", { agentId, text });
     } catch (err) {
@@ -339,9 +369,11 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
       const { [agentId]: _removedMsgs, ...remainingMessages } = state.messages;
       const { [agentId]: _removedAttn, ...remainingAttention } = state.attentionSet;
       const { [agentId]: _removedTs, ...remainingTimestamps } = state.attentionTimestamps;
+      const { [agentId]: _removedLoaded, ...remainingLoaded } = state.messagesLoaded;
       const updates: Partial<AgentStore> = {
         agents: remainingAgents,
         messages: remainingMessages,
+        messagesLoaded: remainingLoaded,
         attentionSet: remainingAttention,
         attentionTimestamps: remainingTimestamps,
         selectedAgentId:
@@ -359,6 +391,26 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
     toast.info("Agent removed");
   },
 
+  restoreAgent: async (agentId) => {
+    try {
+      await invoke("restore_agent", { agentId });
+      set((state) => {
+        const agent = state.agents[agentId];
+        if (!agent) return state;
+        return {
+          agents: {
+            ...state.agents,
+            [agentId]: { ...agent, status: "idle" as AgentStatus },
+          },
+        };
+      });
+      toast.success("Agent restarted");
+    } catch (err) {
+      toast.error(`Failed to restart: ${String(err)}`);
+      throw err;
+    }
+  },
+
   selectAgent: (agentId) => {
     set((state) => {
       if (agentId && state.attentionSet[agentId]) {
@@ -367,6 +419,32 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
       }
       return { selectedAgentId: agentId, viewMode: "agents" as ViewMode };
     });
+    // Load persisted messages if not loaded yet
+    if (agentId) {
+      get().loadMessagesForAgent(agentId);
+    }
+  },
+
+  loadMessagesForAgent: async (agentId) => {
+    const state = get();
+    // Skip if already loaded or already have messages
+    if (state.messagesLoaded[agentId] || (state.messages[agentId] && state.messages[agentId].length > 0)) {
+      return;
+    }
+    set((s) => ({ messagesLoaded: { ...s.messagesLoaded, [agentId]: true } }));
+    try {
+      const msgs = await invoke<SDKMessage[]>("load_messages", { agentId });
+      if (msgs.length > 0) {
+        set((s) => ({
+          messages: {
+            ...s.messages,
+            [agentId]: [...msgs, ...(s.messages[agentId] || [])],
+          },
+        }));
+      }
+    } catch {
+      // No saved messages — that's fine
+    }
   },
 
   toggleVibeMode: () => {

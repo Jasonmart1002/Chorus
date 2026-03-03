@@ -1,5 +1,6 @@
 /// Set dock badge count. For now this updates the tray tooltip.
 /// Full dock badge requires native macOS API integration.
+#[allow(dead_code)]
 pub fn set_badge_count(app: &tauri::AppHandle, count: usize) {
     // Update tray tooltip with count
     if let Some(tray) = app.tray_by_id("main") {

@@ -5,7 +5,7 @@ use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::process::{Child, Command};
 use tokio::sync::mpsc;
 
-use super::adapters::{self, CliAdapter, ParsedEvent};
+use super::adapters::{self, ParsedEvent};
 use super::state::{AgentStatus, Engine};
 
 /// Global PID registry — tracks all spawned CLI processes so they can be
@@ -408,6 +408,7 @@ impl AgentProcess {
             .map_err(|e| format!("Failed to kill process: {}", e))
     }
 
+    #[allow(dead_code)]
     pub fn pid(&self) -> Option<u32> {
         self.child.id()
     }

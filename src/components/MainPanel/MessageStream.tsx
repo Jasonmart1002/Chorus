@@ -69,6 +69,7 @@ type RenderItem =
   | { kind: "text"; text: string }
   | { kind: "tool_use"; block: ToolUseBlock }
   | { kind: "tool_group"; name: string; blocks: ToolUseBlock[] }
+  | { kind: "activity_group"; blocks: ToolUseBlock[] }
   | { kind: "result"; message: ResultMessage }
   | { kind: "user_prompt"; text: string }
   | { kind: "system_init" }
@@ -150,20 +151,22 @@ function groupConsecutiveToolItems(items: RenderItem[]): RenderItem[] {
   while (i < items.length) {
     const item = items[i];
     if (item.kind === "tool_use") {
+      // Collect ALL consecutive tool_use items regardless of name
       let j = i + 1;
-      while (
-        j < items.length &&
-        items[j].kind === "tool_use" &&
-        (items[j] as { kind: "tool_use"; block: ToolUseBlock }).block.name === item.block.name
-      ) {
+      while (j < items.length && items[j].kind === "tool_use") {
         j++;
       }
-      if (j - i >= 2) {
-        result.push({
-          kind: "tool_group",
-          name: item.block.name,
-          blocks: items.slice(i, j).map((it) => (it as { kind: "tool_use"; block: ToolUseBlock }).block),
-        });
+      const run = items.slice(i, j).map(
+        (it) => (it as { kind: "tool_use"; block: ToolUseBlock }).block
+      );
+      if (run.length >= 2) {
+        // Check if all the same name — use simpler tool_group
+        const allSameName = run.every((b) => b.name === run[0].name);
+        if (allSameName) {
+          result.push({ kind: "tool_group", name: run[0].name, blocks: run });
+        } else {
+          result.push({ kind: "activity_group", blocks: run });
+        }
       } else {
         result.push(item);
       }
@@ -277,6 +280,8 @@ function RenderItemView({ item, agentId }: { item: RenderItem; agentId: string }
       return <ToolUseView block={item.block} />;
     case "tool_group":
       return <ToolGroupView name={item.name} blocks={item.blocks} />;
+    case "activity_group":
+      return <ActivityGroupView blocks={item.blocks} />;
     case "ask_user":
       return <AskUserQuestionView block={item.block} agentId={agentId} />;
     case "plan":
@@ -780,6 +785,145 @@ function ToolGroupView({ name, blocks }: { name: string; blocks: ToolUseBlock[] 
 
         {/* Collapse chevron */}
         <span style={{ flexShrink: 0, display: "flex", alignItems: "center", marginLeft: "auto" }}>
+          {expanded ? (
+            <ChevronDown size={13} color={theme.textMuted} />
+          ) : (
+            <ChevronRight size={13} color={theme.textMuted} />
+          )}
+        </span>
+      </div>
+
+      {/* Expanded: nested tool views */}
+      {expanded && (
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            borderRadius: contentRadius,
+            overflow: "hidden",
+          }}
+        >
+          {blocks.map((b, i) => (
+            <ToolUseView key={i} block={b} nested />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Activity Group — condensed mixed-tool summary
+// ---------------------------------------------------------------------------
+
+function ActivityGroupView({ blocks }: { blocks: ToolUseBlock[] }) {
+  const [expanded, setExpanded] = useState(false);
+  const theme = useThemeStore((s) => s.current);
+
+  // Build counts by tool name
+  const counts: Record<string, number> = {};
+  for (const b of blocks) {
+    counts[b.name] = (counts[b.name] || 0) + 1;
+  }
+  const parts = Object.entries(counts).map(([name, count]) => {
+    const Icon = TOOL_ICONS[name] || Wrench;
+    return { name, count, Icon };
+  });
+
+  const outerRadius = theme.borderRadius;
+  const titleRadius = expanded
+    ? `${outerRadius}px ${outerRadius}px 0 0`
+    : outerRadius;
+  const contentRadius = `0 0 ${outerRadius}px ${outerRadius}px`;
+
+  return (
+    <div
+      style={{
+        borderRadius: outerRadius,
+        border: `2px solid ${theme.borderStrong}`,
+        boxShadow: theme.shadowChunky,
+        minWidth: 0,
+      }}
+    >
+      {/* Title bar */}
+      <div
+        onClick={() => setExpanded(!expanded)}
+        style={{
+          padding: "8px 12px",
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+          cursor: "pointer",
+          userSelect: "none",
+          background: theme.bgCard,
+          borderBottom: expanded ? `1px solid ${theme.borderColor}` : undefined,
+          borderRadius: titleRadius,
+          transition: `background 0.15s ease`,
+          minHeight: 34,
+          minWidth: 0,
+        }}
+      >
+        {/* Window button dot */}
+        <span
+          style={{
+            display: "inline-block",
+            width: 8,
+            height: 8,
+            borderRadius: "50%",
+            background: theme.lavender,
+            border: `1.5px solid ${theme.borderStrong}`,
+            flexShrink: 0,
+          }}
+        />
+
+        {/* Tool breakdown pills */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+            flex: 1,
+            minWidth: 0,
+            overflow: "hidden",
+          }}
+        >
+          {parts.map(({ name, count, Icon }) => (
+            <span
+              key={name}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 4,
+                padding: "2px 8px",
+                borderRadius: theme.borderRadiusFull,
+                background: theme.bgBase,
+                border: `1.5px solid ${theme.borderColor}`,
+                fontSize: 10,
+                fontWeight: 700,
+                fontFamily: theme.fontHeading,
+                color: theme.textSecondary,
+                whiteSpace: "nowrap",
+                letterSpacing: "0.01em",
+              }}
+            >
+              <Icon size={10} color={theme.lavender} strokeWidth={2.5} />
+              {name}
+              {count > 1 && (
+                <span style={{ color: theme.lavender, fontFamily: theme.fontCode }}>
+                  &times;{count}
+                </span>
+              )}
+            </span>
+          ))}
+        </div>
+
+        {/* Total count badge */}
+        <Badge variant="count" color={theme.lavender}>
+          {blocks.length}
+        </Badge>
+
+        {/* Collapse chevron */}
+        <span style={{ flexShrink: 0, display: "flex", alignItems: "center" }}>
           {expanded ? (
             <ChevronDown size={13} color={theme.textMuted} />
           ) : (

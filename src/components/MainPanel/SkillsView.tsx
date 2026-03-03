@@ -544,7 +544,8 @@ export function SkillsView() {
 
   useEffect(() => {
     fetchSkills();
-  }, [fetchSkills]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const filteredPlugins = useMemo(() => {
     if (!data?.plugins) return [];

@@ -28,6 +28,7 @@ pub enum ParsedEvent {
 /// Describes how to interact with a specific CLI engine.
 /// Each adapter knows how to resolve its binary, build spawn arguments,
 /// parse output lines, and format input messages.
+#[allow(dead_code)]
 pub trait CliAdapter: Send + Sync {
     /// Human-readable engine name
     fn engine(&self) -> Engine;

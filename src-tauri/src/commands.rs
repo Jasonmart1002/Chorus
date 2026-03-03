@@ -196,6 +196,54 @@ pub async fn list_agents(
     Ok(mgr.list_agents())
 }
 
+/// Restart an exited agent, re-spawning its process with the same session_id
+/// so the CLI resumes the previous conversation.
+#[tauri::command]
+pub async fn restore_agent(
+    agent_id: String,
+    manager: tauri::State<'_, ManagerState>,
+    app: tauri::AppHandle,
+) -> Result<(), String> {
+    let (config, session_id) = {
+        let mgr = manager.lock().await;
+        let agent = mgr
+            .agents
+            .get(&agent_id)
+            .ok_or_else(|| format!("Agent {} not found", agent_id))?;
+        if agent.status != AgentStatus::Exited {
+            return Err("Agent is not exited — cannot restore".to_string());
+        }
+        (agent.config.clone(), agent.session_id.clone())
+    };
+
+    let process = AgentProcess::spawn(
+        agent_id.clone(),
+        config.cwd.clone(),
+        session_id,
+        config.model.clone(),
+        config.permission_mode.clone(),
+        config.engine.clone(),
+        app.clone(),
+    )?;
+
+    {
+        let mut mgr = manager.lock().await;
+        mgr.processes.insert(agent_id.clone(), process);
+        mgr.update_status(&agent_id, AgentStatus::Idle);
+    }
+
+    // Emit status change so frontend updates
+    let _ = app.emit(
+        "agent-status-changed",
+        StatusChange {
+            agent_id,
+            status: AgentStatus::Idle,
+        },
+    );
+
+    Ok(())
+}
+
 /// Detect which CLI engines are available on this system
 #[tauri::command]
 pub async fn detect_engines() -> Result<Vec<EngineInfo>, String> {
@@ -491,4 +539,49 @@ end tell"#,
     }
 
     Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// Message persistence
+// ---------------------------------------------------------------------------
+
+fn messages_dir() -> std::path::PathBuf {
+    #[cfg(unix)]
+    let dir = {
+        let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
+        std::path::PathBuf::from(home).join(".chorus").join("sessions")
+    };
+    #[cfg(windows)]
+    let dir = {
+        let appdata = std::env::var("APPDATA").unwrap_or_else(|_| ".".to_string());
+        std::path::PathBuf::from(appdata).join("Chorus").join("sessions")
+    };
+    let _ = std::fs::create_dir_all(&dir);
+    dir
+}
+
+#[tauri::command]
+pub async fn save_messages(
+    agent_id: String,
+    messages: Vec<serde_json::Value>,
+) -> Result<(), String> {
+    let dir = messages_dir().join(&agent_id);
+    let _ = std::fs::create_dir_all(&dir);
+    let path = dir.join("messages.json");
+    let json = serde_json::to_string(&messages)
+        .map_err(|e| format!("Serialize error: {}", e))?;
+    std::fs::write(&path, json).map_err(|e| format!("Write error: {}", e))
+}
+
+#[tauri::command]
+pub async fn load_messages(
+    agent_id: String,
+) -> Result<Vec<serde_json::Value>, String> {
+    let path = messages_dir().join(&agent_id).join("messages.json");
+    if !path.exists() {
+        return Ok(Vec::new());
+    }
+    let content =
+        std::fs::read_to_string(&path).map_err(|e| format!("Read error: {}", e))?;
+    serde_json::from_str(&content).map_err(|e| format!("Parse error: {}", e))
 }

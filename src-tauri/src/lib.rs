@@ -10,10 +10,14 @@ use tokio::sync::Mutex;
 type ManagerState = Arc<Mutex<agent::manager::AgentManager>>;
 
 pub fn run() {
-    let agent_manager: ManagerState = Arc::new(Mutex::new(agent::manager::AgentManager::new()));
+    let mut mgr = agent::manager::AgentManager::new();
+    mgr.load_saved();
+    let agent_manager: ManagerState = Arc::new(Mutex::new(mgr));
     let running_cmd: commands::RunningCommandState = Arc::new(Mutex::new(std::collections::HashMap::new()));
     let automations_state: automations::AutomationsStateHandle =
         Arc::new(Mutex::new(automations::AutomationsState::load()));
+    let running_automations: automations::RunningAutomationsHandle =
+        Arc::new(Mutex::new(std::collections::HashMap::new()));
 
     tauri::Builder::default()
         .plugin(tauri_plugin_notification::init())
@@ -21,6 +25,7 @@ pub fn run() {
         .manage(agent_manager.clone())
         .manage(running_cmd)
         .manage(automations_state.clone())
+        .manage(running_automations)
         .invoke_handler(tauri::generate_handler![
             commands::create_agent,
             commands::send_prompt,
@@ -29,6 +34,9 @@ pub fn run() {
             commands::remove_agent,
             commands::list_agents,
             commands::detect_engines,
+            commands::restore_agent,
+            commands::save_messages,
+            commands::load_messages,
             commands::run_command,
             commands::kill_running_command,
             commands::open_terminal,
@@ -39,6 +47,8 @@ pub fn run() {
             automations::update_automation,
             automations::delete_automation,
             automations::run_automation_now,
+            automations::stop_automation,
+            automations::get_running_automations,
         ])
         .setup(move |app| {
             tray::setup_tray(app)?;

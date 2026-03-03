@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <strong>A native desktop app for running multiple Claude Code agents in parallel.</strong><br />
+  <strong>A native desktop app for running multiple AI coding agents in parallel.</strong><br />
   <em>many voices, one stage</em>
 </p>
 
@@ -27,11 +27,11 @@
 
 ## The Problem
 
-You're using Claude Code across multiple projects. Each one needs its own terminal. You're alt-tabbing between 5+ windows, losing track of which agent finished, which one errored, and which one is waiting for input.
+You're using AI coding agents across multiple projects. Each one needs its own terminal. You're alt-tabbing between 5+ windows, losing track of which agent finished, which one errored, and which one is waiting for input.
 
 ## The Solution
 
-Chorus puts every agent in **one window**. Create agents, assign them to project directories, fire off prompts, and let them work in parallel. When an agent finishes or needs your attention, you'll know immediately — no terminal archaeology required.
+Chorus puts every agent in **one window**. Supports **Claude Code**, **OpenAI Codex**, and **Google Gemini CLI** — pick your engine per agent. Create agents, assign them to project directories, fire off prompts, and let them work in parallel. When an agent finishes or needs your attention, you'll know immediately — no terminal archaeology required.
 
 ---
 
@@ -63,8 +63,11 @@ Chorus puts every agent in **one window**. Create agents, assign them to project
 ### Cross-Platform
 Runs natively on **macOS**, **Windows**, and **Linux**. Platform-specific process management, terminal integration, and keyboard shortcuts are handled automatically — same experience everywhere.
 
+### Multi-Engine Support
+Run **Claude Code**, **OpenAI Codex**, or **Google Gemini CLI** agents side by side. Chorus auto-detects which engines are installed and normalizes their output into a unified interface. Pick the best engine for each task.
+
 ### Multi-Agent Management
-Create as many agents as you need. Each gets its own Claude Code process, scoped to a specific project directory, with an independent conversation and session history. Choose models and permission modes per agent.
+Create as many agents as you need. Each gets its own process, scoped to a specific project directory, with an independent conversation and session history. Choose models and permission modes per agent.
 
 ### Real-Time Streaming
 Every agent streams its output live — text responses, tool calls, results — rendered with full **Markdown** and **syntax highlighting**. No polling, no refresh.
@@ -90,6 +93,12 @@ In-app toasts and **OS-native notifications** when any agent completes or errors
 ### Light & Dark Themes
 Beautiful **Catppuccin**-inspired palettes (Latte & Mocha) with warm pastels, soft gradients, and a playful chunky design. Toggle with `Shift+Cmd+T` (`Shift+Ctrl+T` on Windows/Linux). Persists across sessions.
 
+### Automations
+Schedule prompts to run automatically — **daily**, **weekly**, **monthly**, or at a **custom interval**. Pick specific days of the week, target an existing agent or spin up a new one. Monitor running automations and view run history.
+
+### Skills Browser
+Browse and search installed Claude Code plugins, skills, and slash commands. See metadata, arguments, and file paths at a glance.
+
 ### Keyboard-First
 Every important action has a shortcut. See the full list in the [Keyboard Shortcuts](#keyboard-shortcuts) section below, or press `Cmd+K` (`Ctrl+K` on Windows/Linux) in the app.
 
@@ -99,7 +108,7 @@ Every important action has a shortcut. See the full list in the [Keyboard Shortc
 
 ### Prerequisites
 
-- [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code) installed and authenticated
+- At least one supported CLI installed: [Claude Code](https://docs.anthropic.com/en/docs/claude-code), [OpenAI Codex](https://github.com/openai/codex), or [Google Gemini CLI](https://github.com/google-gemini/gemini-cli)
 - [Node.js](https://nodejs.org/) 18+
 - [Rust](https://rustup.rs/) toolchain
 
@@ -161,6 +170,7 @@ Hit **Stop** to interrupt an agent mid-task. Chorus transparently restarts the p
 | `Shift+Cmd+T` | Toggle light/dark theme |
 | `Shift+Cmd+J` | Previous agent |
 | `Shift+Cmd+K` | Next agent |
+| `Shift+Cmd+A` | New automation |
 | `Cmd+K` | Show all shortcuts |
 
 ---
@@ -175,15 +185,16 @@ Hit **Stop** to interrupt an agent mid-task. Chorus transparently restarts the p
                      │ Tauri IPC (invoke / listen)
 ┌────────────────────┴─────────────────────────┐
 │              Rust Backend (Tauri)             │
-│     Agent lifecycle, PID registry, events     │
+│  Agent lifecycle, adapters, PID registry,    │
+│  automations scheduler, events               │
 └──┬──────────┬──────────┬─────────────────────┘
-   │          │          │  NDJSON stdin/stdout
-┌──┴──┐  ┌───┴──┐  ┌───┴──┐
-│claude│  │claude│  │claude│  ... one process per agent
-└─────┘  └──────┘  └──────┘
+   │          │          │  stdin/stdout per engine
+┌──┴───┐  ┌──┴───┐  ┌──┴────┐
+│claude │  │codex │  │gemini │  ... one process per agent
+└──────┘  └──────┘  └───────┘
 ```
 
-Each agent runs as a `claude -p --output-format stream-json` process. The Rust backend parses the NDJSON stream, infers agent status from message types, and emits events to the frontend in real time. A global PID registry ensures all child processes are cleaned up on exit.
+Each agent runs as a CLI subprocess. A pluggable **adapter system** normalizes the output of each engine (Claude's NDJSON, Codex's ANSI text, Gemini's JSON events) into a unified format. The Rust backend infers agent status from message types and emits events to the frontend in real time. A global PID registry ensures all child processes are cleaned up on exit.
 
 ---
 
@@ -194,7 +205,7 @@ Each agent runs as a `claude -p --output-format stream-json` process. The Rust b
 | Frontend | React 19, TypeScript, Vite, Zustand |
 | Desktop | Tauri v2 (Rust) |
 | Styling | Catppuccin palettes, custom CSS |
-| AI Backend | Claude Code CLI (stream-json mode) |
+| AI Backend | Claude Code, OpenAI Codex, Google Gemini CLI |
 | Fonts | Nunito, Space Grotesk, JetBrains Mono |
 
 ---
@@ -213,12 +224,15 @@ This starts Vite with HMR on `localhost:1420` and launches the Tauri window. Fro
 ```
 src/                    # React frontend
   components/           # UI components (sidebar, main panel, dialogs)
-  store/                # Zustand stores (agent, sidebar, theme, toast)
+  store/                # Zustand stores (agent, automations, sidebar, theme, toast)
   types/                # TypeScript type definitions
   lib/                  # Theme palettes, constants, platform utils
   hooks/                # Custom React hooks
 src-tauri/              # Rust backend
   src/agent/            # Process spawning, state management, PID registry
+  src/agent/adapters/   # Engine adapters (Claude, Codex, Gemini)
+  src/automations.rs    # Automation scheduler and execution
+  src/skills.rs         # Plugin/skill discovery
   src/commands.rs       # Tauri IPC command handlers
   src/tray/             # System tray integration
 ```

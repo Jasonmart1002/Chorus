@@ -27,4 +27,12 @@ export interface Automation {
   next_run_at?: string;
   last_run_status?: "success" | "error";
   run_count: number;
+  skip_permissions: boolean;
+}
+
+export interface RunningAutomation {
+  automation_id: string;
+  automation_name: string;
+  agent_id: string;
+  started_at: string;
 }

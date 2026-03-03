@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tauri::Emitter;
@@ -6,7 +7,7 @@ use tokio::sync::Mutex;
 
 use crate::agent::manager::AgentManager;
 use crate::agent::process::AgentProcess;
-use crate::agent::state::{AgentConfig, Engine};
+use crate::agent::state::{AgentConfig, AgentStatus, Engine};
 
 // ---------------------------------------------------------------------------
 // Types
@@ -74,6 +75,8 @@ pub struct Automation {
     pub next_run_at: Option<String>,
     pub last_run_status: Option<String>, // "success" | "error"
     pub run_count: u32,
+    #[serde(default)]
+    pub skip_permissions: bool,
 }
 
 // ---------------------------------------------------------------------------
@@ -126,6 +129,41 @@ impl AutomationsState {
             .map_err(|e| format!("Serialize error: {}", e))?;
         std::fs::write(&path, json).map_err(|e| format!("Write error: {}", e))
     }
+}
+
+// ---------------------------------------------------------------------------
+// Running automations tracking
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Clone, Serialize)]
+pub struct RunningAutomationInfo {
+    pub automation_id: String,
+    pub automation_name: String,
+    pub agent_id: String,
+    pub started_at: String,
+}
+
+pub type RunningAutomationsHandle = Arc<Mutex<HashMap<String, RunningAutomationInfo>>>;
+
+#[derive(Serialize, Clone)]
+pub struct AutomationStarted {
+    pub automation_id: String,
+    pub automation_name: String,
+    pub agent_id: String,
+}
+
+#[derive(Serialize, Clone)]
+pub struct AutomationCompleted {
+    pub automation_id: String,
+    pub automation_name: String,
+    pub agent_id: String,
+}
+
+#[derive(Serialize, Clone)]
+pub struct AutomationStopped {
+    pub automation_id: String,
+    pub automation_name: String,
+    pub agent_id: String,
 }
 
 // ---------------------------------------------------------------------------
@@ -295,18 +333,15 @@ async fn fire_automation(
     // If targeting an existing agent, send prompt to it
     if let Some(ref agent_id) = target.agent_id {
         let mgr = manager.lock().await;
+        let engine = mgr
+            .agents
+            .get(agent_id)
+            .map(|a| a.config.engine.clone())
+            .unwrap_or(Engine::Claude);
         let process = mgr
             .processes
             .get(agent_id)
             .ok_or_else(|| format!("Agent {} not found", agent_id))?;
-        let engine = {
-            let mgr_ref = manager.lock().await;
-            mgr_ref
-                .agents
-                .get(agent_id)
-                .map(|a| a.config.engine.clone())
-                .unwrap_or(Engine::Claude)
-        };
         process.send(&automation.prompt, &engine).await?;
         return Ok(agent_id.clone());
     }
@@ -327,7 +362,11 @@ async fn fire_automation(
 
     let agent_id = uuid::Uuid::new_v4().to_string();
     let session_id = uuid::Uuid::new_v4().to_string();
-    let perm_mode = "bypassPermissions".to_string();
+    let perm_mode = if automation.skip_permissions {
+        "dangerouslySkipPermissions".to_string()
+    } else {
+        "bypassPermissions".to_string()
+    };
     let engine = Engine::Claude; // Automations default to Claude
 
     let config = AgentConfig {
@@ -384,6 +423,7 @@ pub async fn create_automation(
     prompt: String,
     schedule: AutomationSchedule,
     target: AutomationTarget,
+    skip_permissions: Option<bool>,
     state: tauri::State<'_, AutomationsStateHandle>,
 ) -> Result<Automation, String> {
     let mut s = state.lock().await;
@@ -400,6 +440,7 @@ pub async fn create_automation(
         next_run_at: None,
         last_run_status: None,
         run_count: 0,
+        skip_permissions: skip_permissions.unwrap_or(false),
     };
 
     automation.next_run_at = compute_next_run(&automation.schedule);
@@ -417,6 +458,7 @@ pub async fn update_automation(
     schedule: Option<AutomationSchedule>,
     target: Option<AutomationTarget>,
     enabled: Option<bool>,
+    skip_permissions: Option<bool>,
     state: tauri::State<'_, AutomationsStateHandle>,
 ) -> Result<Automation, String> {
     let mut s = state.lock().await;
@@ -445,6 +487,9 @@ pub async fn update_automation(
             automation.next_run_at = compute_next_run(&automation.schedule);
         }
     }
+    if let Some(sp) = skip_permissions {
+        automation.skip_permissions = sp;
+    }
 
     let result = automation.clone();
     s.save()?;
@@ -465,9 +510,18 @@ pub async fn delete_automation(
 pub async fn run_automation_now(
     id: String,
     auto_state: tauri::State<'_, AutomationsStateHandle>,
+    running_autos: tauri::State<'_, RunningAutomationsHandle>,
     manager: tauri::State<'_, Arc<Mutex<AgentManager>>>,
     app: tauri::AppHandle,
 ) -> Result<String, String> {
+    // Check if already running
+    {
+        let running = running_autos.lock().await;
+        if running.contains_key(&id) {
+            return Err("Automation is already running".to_string());
+        }
+    }
+
     let automation = {
         let s = auto_state.lock().await;
         s.automations
@@ -478,6 +532,28 @@ pub async fn run_automation_now(
     };
 
     let agent_id = fire_automation(&automation, manager.inner(), &app).await?;
+
+    // Track as running
+    let info = RunningAutomationInfo {
+        automation_id: id.clone(),
+        automation_name: automation.name.clone(),
+        agent_id: agent_id.clone(),
+        started_at: chrono::Local::now().to_rfc3339(),
+    };
+    {
+        let mut running = running_autos.lock().await;
+        running.insert(id.clone(), info);
+    }
+
+    // Emit started event
+    let _ = app.emit(
+        "automation-started",
+        AutomationStarted {
+            automation_id: id.clone(),
+            automation_name: automation.name.clone(),
+            agent_id: agent_id.clone(),
+        },
+    );
 
     // Update run stats
     {
@@ -493,11 +569,179 @@ pub async fn run_automation_now(
     let _ = app.emit(
         "automation-fired",
         AutomationFired {
-            automation_id: automation.id,
-            automation_name: automation.name,
+            automation_id: automation.id.clone(),
+            automation_name: automation.name.clone(),
             agent_id: agent_id.clone(),
         },
     );
 
+    // Spawn background task to monitor agent completion
+    let running_handle = running_autos.inner().clone();
+    let manager_handle = manager.inner().clone();
+    let auto_state_handle = auto_state.inner().clone();
+    let app_handle = app.clone();
+    let auto_id = id.clone();
+    let auto_name = automation.name.clone();
+    let monitored_agent_id = agent_id.clone();
+    tauri::async_runtime::spawn(async move {
+        monitor_automation_agent(
+            auto_id,
+            auto_name,
+            monitored_agent_id,
+            running_handle,
+            manager_handle,
+            auto_state_handle,
+            app_handle,
+        )
+        .await;
+    });
+
     Ok(agent_id)
+}
+
+/// Monitors an agent spawned by an automation. When it enters idle/awaiting_input/exited
+/// state (meaning it finished processing), mark the automation as completed.
+async fn monitor_automation_agent(
+    automation_id: String,
+    automation_name: String,
+    agent_id: String,
+    running: RunningAutomationsHandle,
+    manager: Arc<Mutex<AgentManager>>,
+    auto_state: AutomationsStateHandle,
+    app: tauri::AppHandle,
+) {
+    // Wait for the agent to start working before monitoring for completion.
+    // The agent starts idle, transitions to working when it processes the prompt.
+    let mut saw_working = false;
+
+    // Initial delay — let the agent process the prompt before polling
+    tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+
+    loop {
+        tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+
+        // Check if still tracked as running (might have been stopped)
+        {
+            let r = running.lock().await;
+            if !r.contains_key(&automation_id) {
+                return; // Was stopped or already removed
+            }
+        }
+
+        // Check agent status
+        let status = {
+            let mgr = manager.lock().await;
+            mgr.agents
+                .get(&agent_id)
+                .map(|a| a.status.clone())
+        };
+
+        match status {
+            Some(AgentStatus::Working) => {
+                saw_working = true;
+            }
+            Some(AgentStatus::Idle) | Some(AgentStatus::AwaitingInput) if saw_working => {
+                // Agent was working and is now done
+                {
+                    let mut r = running.lock().await;
+                    r.remove(&automation_id);
+                }
+
+                let _ = app.emit(
+                    "automation-completed",
+                    AutomationCompleted {
+                        automation_id: automation_id.clone(),
+                        automation_name: automation_name.clone(),
+                        agent_id: agent_id.clone(),
+                    },
+                );
+
+                {
+                    let mut s = auto_state.lock().await;
+                    if let Some(a) = s.automations.iter_mut().find(|a| a.id == automation_id) {
+                        a.last_run_status = Some("success".to_string());
+                        let _ = s.save();
+                    }
+                }
+
+                return;
+            }
+            Some(AgentStatus::Exited) | None => {
+                // Agent died or was removed
+                {
+                    let mut r = running.lock().await;
+                    r.remove(&automation_id);
+                }
+
+                let _ = app.emit(
+                    "automation-completed",
+                    AutomationCompleted {
+                        automation_id: automation_id.clone(),
+                        automation_name: automation_name.clone(),
+                        agent_id: agent_id.clone(),
+                    },
+                );
+
+                {
+                    let mut s = auto_state.lock().await;
+                    if let Some(a) = s.automations.iter_mut().find(|a| a.id == automation_id) {
+                        a.last_run_status = if saw_working {
+                            Some("success".to_string())
+                        } else {
+                            Some("error".to_string())
+                        };
+                        let _ = s.save();
+                    }
+                }
+
+                return;
+            }
+            _ => {
+                // Still initializing or working, continue polling
+            }
+        }
+    }
+}
+
+#[tauri::command]
+pub async fn stop_automation(
+    id: String,
+    running_autos: tauri::State<'_, RunningAutomationsHandle>,
+    manager: tauri::State<'_, Arc<Mutex<AgentManager>>>,
+    app: tauri::AppHandle,
+) -> Result<(), String> {
+    let info = {
+        let mut running = running_autos.lock().await;
+        running
+            .remove(&id)
+            .ok_or_else(|| format!("Automation {} is not running", id))?
+    };
+
+    // Kill the agent
+    {
+        let mut mgr = manager.lock().await;
+        if let Some(process) = mgr.processes.get_mut(&info.agent_id) {
+            let _ = process.kill();
+        }
+        mgr.update_status(&info.agent_id, AgentStatus::Exited);
+    }
+
+    let _ = app.emit(
+        "automation-stopped",
+        AutomationStopped {
+            automation_id: info.automation_id,
+            automation_name: info.automation_name,
+            agent_id: info.agent_id,
+        },
+    );
+
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn get_running_automations(
+    running_autos: tauri::State<'_, RunningAutomationsHandle>,
+) -> Result<Vec<RunningAutomationInfo>, String> {
+    let running = running_autos.lock().await;
+    Ok(running.values().cloned().collect())
 }

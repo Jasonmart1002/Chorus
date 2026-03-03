@@ -87,13 +87,18 @@ impl CliAdapter for ClaudeAdapter {
             "--verbose".to_string(),
             "--session-id".to_string(),
             session_id.to_string(),
-            "--permission-mode".to_string(),
-            permission_mode.to_string(),
         ];
+
+        if permission_mode == "dangerouslySkipPermissions" {
+            args.push("--dangerously-skip-permissions".to_string());
+        } else {
+            args.push("--permission-mode".to_string());
+            args.push(permission_mode.to_string());
+        }
 
         // AskUserQuestion gets auto-answered with a useless default in -p mode.
         // Disable it so Claude asks questions as text instead.
-        if permission_mode == "bypassPermissions" {
+        if permission_mode == "bypassPermissions" || permission_mode == "dangerouslySkipPermissions" {
             args.push("--disallowed-tools".to_string());
             args.push("AskUserQuestion".to_string());
         }

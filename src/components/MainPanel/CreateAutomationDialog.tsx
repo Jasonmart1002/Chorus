@@ -49,9 +49,11 @@ export function CreateAutomationDialog({ editingId, onClose }: Props) {
     editing?.schedule.days || []
   );
   const [time, setTime] = useState(editing?.schedule.time || "09:00");
-  const [customMinutes, setCustomMinutes] = useState(
-    editing?.schedule.custom_interval_minutes ?? 60
-  );
+  const [customMinutes, setCustomMinutes] = useState(() => {
+    const raw = editing?.schedule.custom_interval_minutes ?? 60;
+    if (raw >= 60 && raw % 60 === 0) return raw / 60; // show as hours if editing in hours
+    return raw;
+  });
   const [targetMode, setTargetMode] = useState<"existing" | "new">(
     editing?.target.agent_id ? "existing" : "new"
   );
@@ -63,6 +65,16 @@ export function CreateAutomationDialog({ editingId, onClose }: Props) {
   );
   const [newAgentCwd, setNewAgentCwd] = useState(
     editing?.target.agent_cwd || ""
+  );
+  const [skipPermissions, setSkipPermissions] = useState(
+    editing?.skip_permissions ?? false
+  );
+  const [customUnit, setCustomUnit] = useState<"minutes" | "hours">(
+    editing?.schedule.custom_interval_minutes &&
+      editing.schedule.custom_interval_minutes >= 60 &&
+      editing.schedule.custom_interval_minutes % 60 === 0
+      ? "hours"
+      : "minutes"
   );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -106,7 +118,11 @@ export function CreateAutomationDialog({ editingId, onClose }: Props) {
       days,
       time,
       custom_interval_minutes:
-        frequency === "custom" ? customMinutes : undefined,
+        frequency === "custom"
+          ? customUnit === "hours"
+            ? customMinutes * 60
+            : customMinutes
+          : undefined,
     };
 
     const target: AutomationTarget =
@@ -126,9 +142,10 @@ export function CreateAutomationDialog({ editingId, onClose }: Props) {
           prompt: prompt.trim(),
           schedule,
           target,
+          skip_permissions: skipPermissions,
         });
       } else {
-        await createAutomation(name.trim(), prompt.trim(), schedule, target);
+        await createAutomation(name.trim(), prompt.trim(), schedule, target, skipPermissions);
       }
       onClose();
     } catch (err) {
@@ -247,8 +264,8 @@ export function CreateAutomationDialog({ editingId, onClose }: Props) {
           </select>
         </label>
 
-        {/* Days of week — shown for weekly & monthly */}
-        {(frequency === "weekly" || frequency === "monthly") && (
+        {/* Days of week — shown for daily, weekly & monthly */}
+        {(frequency === "daily" || frequency === "weekly" || frequency === "monthly") && (
           <div>
             <span style={labelStyle}>Days</span>
             <div style={{ display: "flex", gap: 5 }}>
@@ -311,29 +328,79 @@ export function CreateAutomationDialog({ editingId, onClose }: Props) {
 
         {/* Custom interval — shown for custom */}
         {frequency === "custom" && (
-          <label style={{ display: "block" }}>
-            <span style={labelStyle}>Interval (minutes)</span>
-            <input
-              type="number"
-              min={1}
-              value={customMinutes}
-              onChange={(e) =>
-                setCustomMinutes(Math.max(1, parseInt(e.target.value) || 1))
-              }
-              style={{
-                width: "100%",
-                padding: "8px 12px",
-                background: theme.bgBase,
-                border: `2px solid ${theme.borderStrong}`,
-                borderRadius: theme.borderRadiusSm,
-                color: theme.textPrimary,
-                fontSize: 14,
-                fontFamily: theme.fontBody,
-                outline: "none",
-                boxSizing: "border-box",
-              }}
-            />
-          </label>
+          <div>
+            <span style={labelStyle}>Interval</span>
+            <div style={{ display: "flex", gap: 8 }}>
+              <input
+                type="number"
+                min={1}
+                value={customMinutes}
+                onChange={(e) =>
+                  setCustomMinutes(Math.max(1, parseInt(e.target.value) || 1))
+                }
+                style={{
+                  flex: 1,
+                  padding: "8px 12px",
+                  background: theme.bgBase,
+                  border: `2px solid ${theme.borderStrong}`,
+                  borderRadius: theme.borderRadiusSm,
+                  color: theme.textPrimary,
+                  fontSize: 14,
+                  fontFamily: theme.fontBody,
+                  outline: "none",
+                  boxSizing: "border-box",
+                }}
+              />
+              <div
+                style={{
+                  display: "flex",
+                  borderRadius: theme.borderRadiusSm,
+                  border: `2px solid ${theme.borderStrong}`,
+                  overflow: "hidden",
+                  flexShrink: 0,
+                }}
+              >
+                {(["minutes", "hours"] as const).map((unit) => (
+                  <button
+                    key={unit}
+                    type="button"
+                    onClick={() => {
+                      if (unit === customUnit) return;
+                      if (unit === "hours") {
+                        setCustomMinutes((prev) =>
+                          Math.max(1, Math.round(prev / 60))
+                        );
+                      } else {
+                        setCustomMinutes((prev) => prev * 60);
+                      }
+                      setCustomUnit(unit);
+                    }}
+                    style={{
+                      padding: "7px 14px",
+                      background:
+                        customUnit === unit ? theme.goldLight : theme.bgBase,
+                      border: "none",
+                      borderLeft:
+                        unit === "hours"
+                          ? `2px solid ${theme.borderStrong}`
+                          : "none",
+                      color:
+                        customUnit === unit
+                          ? theme.textPrimary
+                          : theme.textMuted,
+                      fontSize: 12,
+                      fontWeight: 700,
+                      fontFamily: theme.fontHeading,
+                      cursor: "pointer",
+                      transition: `all 0.15s ${theme.easeSpring}`,
+                    }}
+                  >
+                    {unit === "minutes" ? "Min" : "Hr"}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
         )}
 
         {/* Target */}
@@ -427,6 +494,83 @@ export function CreateAutomationDialog({ editingId, onClose }: Props) {
             </div>
           )}
         </div>
+
+        {/* Skip permissions toggle */}
+        {targetMode === "new" && (
+          <div>
+            <button
+              type="button"
+              onClick={() => setSkipPermissions(!skipPermissions)}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                width: "100%",
+                padding: "10px 14px",
+                background: skipPermissions
+                  ? `${theme.peach}15`
+                  : theme.bgBase,
+                border: `2px solid ${skipPermissions ? theme.peach : theme.borderStrong}`,
+                borderRadius: theme.borderRadiusSm,
+                cursor: "pointer",
+                transition: `all 0.15s ${theme.easeSpring}`,
+              }}
+            >
+              <div
+                style={{
+                  width: 36,
+                  height: 20,
+                  borderRadius: theme.borderRadiusFull,
+                  background: skipPermissions ? theme.peach : theme.bgCard,
+                  border: `2px solid ${skipPermissions ? theme.peach : theme.borderStrong}`,
+                  position: "relative",
+                  transition: `all 0.2s ${theme.easeSpring}`,
+                  flexShrink: 0,
+                }}
+              >
+                <div
+                  style={{
+                    width: 12,
+                    height: 12,
+                    borderRadius: "50%",
+                    background: skipPermissions
+                      ? theme.textOnAccent
+                      : theme.textMuted,
+                    position: "absolute",
+                    top: 2,
+                    left: skipPermissions ? 18 : 2,
+                    transition: `all 0.2s ${theme.easeSpring}`,
+                    boxShadow: "0 1px 2px rgba(0,0,0,0.15)",
+                  }}
+                />
+              </div>
+              <div style={{ textAlign: "left" }}>
+                <div
+                  style={{
+                    fontSize: 12,
+                    fontWeight: 700,
+                    fontFamily: theme.fontHeading,
+                    color: skipPermissions
+                      ? theme.peach
+                      : theme.textSecondary,
+                  }}
+                >
+                  Skip Permissions
+                </div>
+                <div
+                  style={{
+                    fontSize: 10,
+                    fontFamily: theme.fontBody,
+                    color: theme.textMuted,
+                    marginTop: 1,
+                  }}
+                >
+                  Run with --dangerously-skip-permissions (no approval prompts)
+                </div>
+              </div>
+            </button>
+          </div>
+        )}
 
         {error && (
           <div
