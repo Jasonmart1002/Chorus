@@ -241,9 +241,20 @@ export const useAutomationsStore = create<AutomationsStore>((set, get) => ({
 
     await listen<{ automation_id: string; automation_name: string; agent_id: string }>(
       "automation-fired",
-      (event) => {
+      async (event) => {
         toast.info(`Automation "${event.payload.automation_name}" fired`);
         get().fetchAutomations();
+        // Refresh agent list so the automation-spawned agent appears in the sidebar
+        try {
+          const agents = await invoke<import("../types/agent").Agent[]>("list_agents");
+          const agentMap: Record<string, import("../types/agent").Agent> = {};
+          for (const agent of agents) {
+            agentMap[agent.id] = agent;
+          }
+          useAgentStore.setState({ agents: agentMap });
+        } catch {
+          // Non-critical — agent will appear on next manual refresh
+        }
       }
     );
 
