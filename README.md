@@ -20,7 +20,7 @@
   <a href="https://github.com/Jasonmart1002/Chorus/releases"><img alt="Latest Release" src="https://img.shields.io/github/v/release/Jasonmart1002/Chorus?style=flat-square&color=7c3aed" /></a>
   <a href="https://github.com/Jasonmart1002/Chorus/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/github/license/Jasonmart1002/Chorus?style=flat-square&color=7c3aed" /></a>
   <a href="https://github.com/Jasonmart1002/Chorus/stargazers"><img alt="Stars" src="https://img.shields.io/github/stars/Jasonmart1002/Chorus?style=flat-square&color=7c3aed" /></a>
-  <img alt="Platform" src="https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-7c3aed?style=flat-square" />
+  <img alt="Platform" src="https://img.shields.io/badge/platform-macOS-7c3aed?style=flat-square" />
 </p>
 
 ---
@@ -94,8 +94,8 @@ Configure hooks and create custom skills through a visual editor.
 
 ## Features
 
-### Cross-Platform
-Runs natively on **macOS**, **Windows**, and **Linux**. Platform-specific process management, terminal integration, and keyboard shortcuts are handled automatically — same experience everywhere.
+### Native macOS App
+Runs natively on **macOS** with platform-specific process management, terminal integration, and keyboard shortcuts.
 
 ### Multi-Agent Management
 Create as many agents as you need. Each gets its own Claude Code process, scoped to a specific project directory, with an independent conversation and session history. Choose your model (Sonnet, Opus, Haiku) and permission mode per agent.
