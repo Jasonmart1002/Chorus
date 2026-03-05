@@ -10,9 +10,10 @@ import { IconButton } from "./ui/IconButton";
 interface Props {
   open: boolean;
   onClose: () => void;
+  projectCwd?: string;
 }
 
-export function AddMcpDialog({ open, onClose }: Props) {
+export function AddMcpDialog({ open, onClose, projectCwd }: Props) {
   const addServer = useMcpStore((s) => s.addServer);
   const theme = useThemeStore((s) => s.current);
 
@@ -32,13 +33,28 @@ export function AddMcpDialog({ open, onClose }: Props) {
       for (const ev of envVars) {
         if (ev.key.trim()) envMap[ev.key.trim()] = ev.value;
       }
+      let commandOrUrl = command.trim();
+      let parsedArgs = args ? args.split(/\s+/).filter(Boolean) : [];
+
+      // Preserve the old "full command in one field" behavior for stdio entries.
+      if (
+        transport === "stdio" &&
+        parsedArgs.length === 0 &&
+        commandOrUrl.includes(" ")
+      ) {
+        const parts = commandOrUrl.split(/\s+/).filter(Boolean);
+        commandOrUrl = parts[0] || commandOrUrl;
+        parsedArgs = parts.slice(1);
+      }
+
       await addServer(
         name.trim(),
         transport,
-        command.trim(),
-        args ? args.split(/\s+/).filter(Boolean) : [],
+        commandOrUrl,
+        parsedArgs,
         envMap,
-        scope
+        scope,
+        projectCwd,
       );
       onClose();
     } catch {
@@ -100,7 +116,8 @@ export function AddMcpDialog({ open, onClose }: Props) {
                 onClick={() => setTransport(t)}
                 style={{
                   padding: "6px 16px",
-                  background: transport === t ? theme.sapphire + "22" : theme.bgBase,
+                  background:
+                    transport === t ? theme.sapphire + "22" : theme.bgBase,
                   border: `2px solid ${transport === t ? theme.sapphire : theme.borderColor}`,
                   borderRadius: theme.borderRadiusSm,
                   color: transport === t ? theme.sapphire : theme.textSecondary,
@@ -150,7 +167,9 @@ export function AddMcpDialog({ open, onClose }: Props) {
             {["user", "project"].map((s) => (
               <button
                 key={s}
+                type="button"
                 onClick={() => setScope(s)}
+                disabled={s === "project" && !projectCwd}
                 style={{
                   padding: "6px 16px",
                   background: scope === s ? theme.teal + "22" : theme.bgBase,
@@ -160,7 +179,9 @@ export function AddMcpDialog({ open, onClose }: Props) {
                   fontSize: 12,
                   fontWeight: 700,
                   fontFamily: theme.fontHeading,
-                  cursor: "pointer",
+                  cursor:
+                    s === "project" && !projectCwd ? "not-allowed" : "pointer",
+                  opacity: s === "project" && !projectCwd ? 0.5 : 1,
                   textTransform: "capitalize",
                 }}
               >
@@ -168,13 +189,33 @@ export function AddMcpDialog({ open, onClose }: Props) {
               </button>
             ))}
           </div>
+          {!projectCwd && (
+            <div
+              style={{
+                marginTop: 6,
+                fontSize: 11,
+                color: theme.textMuted,
+                fontFamily: theme.fontBody,
+              }}
+            >
+              Select an agent first to use project scope.
+            </div>
+          )}
         </div>
 
         {/* Env vars */}
         <div>
           <label style={labelStyle}>Environment Variables</label>
           {envVars.map((ev, i) => (
-            <div key={i} style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 6 }}>
+            <div
+              key={i}
+              style={{
+                display: "flex",
+                gap: 8,
+                alignItems: "center",
+                marginBottom: 6,
+              }}
+            >
               <Input
                 value={ev.key}
                 onChange={(e) => {

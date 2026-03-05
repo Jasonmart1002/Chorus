@@ -45,10 +45,7 @@ impl ClaudeAdapter {
             let candidates = [
                 format!("{}\\.claude\\bin\\claude.exe", userprofile),
                 format!("{}\\Programs\\claude-code\\claude.exe", localappdata),
-                format!(
-                    "{}\\Microsoft\\WinGet\\Links\\claude.exe",
-                    localappdata
-                ),
+                format!("{}\\Microsoft\\WinGet\\Links\\claude.exe", localappdata),
             ];
 
             for candidate in &candidates {
@@ -72,11 +69,7 @@ impl CliAdapter for ClaudeAdapter {
         Self::find_binary()
     }
 
-    fn build_args(
-        &self,
-        session_id: &str,
-        config: &AgentConfig,
-    ) -> Vec<String> {
+    fn build_args(&self, session_id: &str, config: &AgentConfig) -> Vec<String> {
         let permission_mode = &config.permission_mode;
         let mut args = vec![
             "-p".to_string(),
@@ -98,7 +91,8 @@ impl CliAdapter for ClaudeAdapter {
 
         // AskUserQuestion gets auto-answered with a useless default in -p mode.
         // Disable it so Claude asks questions as text instead.
-        if permission_mode == "bypassPermissions" || permission_mode == "dangerouslySkipPermissions" {
+        if permission_mode == "bypassPermissions" || permission_mode == "dangerouslySkipPermissions"
+        {
             args.push("--disallowed-tools".to_string());
             args.push("AskUserQuestion".to_string());
         }

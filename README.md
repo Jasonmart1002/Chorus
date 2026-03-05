@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <strong>A native desktop app for running multiple Claude Code agents in parallel.</strong><br />
+  <strong>A native desktop app for orchestrating multiple Claude Code agents in parallel.</strong><br />
   <em>many voices, one stage</em>
 </p>
 
@@ -11,8 +11,7 @@
   <a href="#features">Features</a> &bull;
   <a href="#installation">Installation</a> &bull;
   <a href="#usage">Usage</a> &bull;
-  <a href="#keyboard-shortcuts">Shortcuts</a> &bull;
-  <a href="#architecture">Architecture</a> &bull;
+  <a href="#known-limitations">Known Limitations</a> &bull;
   <a href="#development">Development</a>
 </p>
 
@@ -20,18 +19,18 @@
   <a href="https://github.com/Jasonmart1002/Chorus/releases"><img alt="Latest Release" src="https://img.shields.io/github/v/release/Jasonmart1002/Chorus?style=flat-square&color=7c3aed" /></a>
   <a href="https://github.com/Jasonmart1002/Chorus/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/github/license/Jasonmart1002/Chorus?style=flat-square&color=7c3aed" /></a>
   <a href="https://github.com/Jasonmart1002/Chorus/stargazers"><img alt="Stars" src="https://img.shields.io/github/stars/Jasonmart1002/Chorus?style=flat-square&color=7c3aed" /></a>
-  <img alt="Platform" src="https://img.shields.io/badge/platform-macOS-7c3aed?style=flat-square" />
+  <img alt="Platform" src="https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-7c3aed?style=flat-square" />
 </p>
 
 ---
 
 ## The Problem
 
-You're using Claude Code across multiple projects. Each one needs its own terminal. You're alt-tabbing between 5+ windows, losing track of which agent finished, which one errored, and which one is waiting for input.
+Running several coding agents at once usually means juggling a pile of terminals, losing track of which one finished, which one needs approval, and which one just errored out.
 
 ## The Solution
 
-Chorus puts every agent in **one window**. Create agents, assign them to project directories, pick your model, fire off prompts, and let them work in parallel. When an agent finishes or needs your attention, you'll know immediately — no terminal archaeology required.
+Chorus puts your local Claude Code agents in one desktop app. Create agents per repo, stream output live, queue attention-heavy work in Vibe Mode, run shell commands, inspect diffs, and schedule recurring automations without terminal sprawl.
 
 ---
 
@@ -47,45 +46,51 @@ Chorus puts every agent in **one window**. Create agents, assign them to project
 <summary><strong>More screenshots</strong></summary>
 
 ### Vibe Mode
-Run all your agents at once and watch them work in a visual overview.
 
-| Light | Dark |
-|:-:|:-:|
+Run multiple agents at once and work through the attention queue without hunting through tabs.
+
+|                        Light                        |                       Dark                        |
+| :-------------------------------------------------: | :-----------------------------------------------: |
 | ![Vibe Mode Light](screenshots/vibe-mode-light.png) | ![Vibe Mode Dark](screenshots/vibe-mode-dark.png) |
 
 ### New Agent Dialog
-Start from a template or configure from scratch — pick your model, working directory, and permission mode.
+
+Create agents from scratch or start from a template, then pick a working directory, model, and permission mode.
 
 <p align="center">
   <img src="screenshots/new-agent-dialog.png" alt="New Agent Dialog" width="500" />
 </p>
 
 ### Automations
-Schedule prompts to run on a recurring basis — daily, weekly, monthly, or custom.
 
-| Light | Dark |
-|:-:|:-:|
+Schedule prompts to run on a recurring basis: daily, weekly, monthly, or custom intervals.
+
+|                          Light                          |                         Dark                          |
+| :-----------------------------------------------------: | :---------------------------------------------------: |
 | ![Automations Light](screenshots/automations-light.png) | ![Automations Dark](screenshots/automations-dark.png) |
 
 ### MCP Servers
-Add and manage MCP (Model Context Protocol) servers directly from the UI.
 
-| Light | Dark |
-|:-:|:-:|
+Manage Claude Code MCP servers from the UI, including project-scoped servers tied to a selected workspace.
+
+|                          Light                          |                         Dark                          |
+| :-----------------------------------------------------: | :---------------------------------------------------: |
 | ![MCP Servers Light](screenshots/mcp-servers-light.png) | ![MCP Servers Dark](screenshots/mcp-servers-dark.png) |
 
 ### Skills & Plugins
-Browse installed Claude Code skills, plugins, and slash commands.
 
-| Light | Dark |
-|:-:|:-:|
+Browse installed Claude Code plugins, skills, and slash commands.
+
+|                     Light                     |                    Dark                     |
+| :-------------------------------------------: | :-----------------------------------------: |
 | ![Skills Light](screenshots/skills-light.png) | ![Skills Dark](screenshots/skills-dark.png) |
 
 ### Hooks & Skills Editor
-Configure hooks and create custom skills through a visual editor.
 
-| Light | Dark |
-|:-:|:-:|
+Edit Claude Code hooks and custom skills without leaving the app.
+
+|                    Light                    |                   Dark                    |
+| :-----------------------------------------: | :---------------------------------------: |
 | ![Hooks Light](screenshots/hooks-light.png) | ![Hooks Dark](screenshots/hooks-dark.png) |
 
 </details>
@@ -94,87 +99,96 @@ Configure hooks and create custom skills through a visual editor.
 
 ## Features
 
-### Native macOS App
-Runs natively on **macOS** with platform-specific process management, terminal integration, and keyboard shortcuts.
+### One Window, Many Repos
 
-### Multi-Agent Management
-Create as many agents as you need. Each gets its own Claude Code process, scoped to a specific project directory, with an independent conversation and session history. Choose your model (Sonnet, Opus, Haiku) and permission mode per agent.
+Create as many agents as you need across different projects. Pin them, archive them, rename them, drag to reorder, filter by status, and search by name or path.
 
 ### Real-Time Streaming
-Every agent streams its output live — text responses, tool calls, results — rendered with full **Markdown** and **syntax highlighting**. No polling, no refresh.
+
+See agent output as it happens: assistant text, tool calls, tool results, plans, diffs, system events, and final results.
 
 ### Vibe Mode
-A focused workflow for handling multiple agents that need attention. Toggle it with `Shift+Cmd+V` (`Shift+Ctrl+V` on Windows/Linux) and Chorus auto-navigates through agents waiting for input, one at a time. See what each agent last worked on, respond, and move to the next — like a review queue for your agents.
+
+Treat agent work like an inbox. Chorus queues agents that need attention and lets you move through them one by one with keyboard shortcuts.
 
 ### Git Quick Actions
-Built-in shortcuts for the most common Git workflows: **view diffs** (unstaged, staged, or vs. main), **commit**, **create PRs**, **push**, and **stash** — all without leaving the app.
+
+Inspect diffs, run common git workflows, and hand off repo tasks to an agent without leaving the app.
 
 ### Run Shell Commands
-Execute arbitrary commands in any agent's working directory with live stdout/stderr streaming. Includes presets for npm, yarn, pnpm, and bun. Your last command is remembered per directory.
 
-### Terminal Handoff
-Need to go deeper? Open a native terminal at any agent's directory, or launch an interactive `claude --resume` session that picks up exactly where the agent left off.
-
-### Agent Organization
-**Pin** important agents to the top. **Archive** ones you're done with. **Rename** them. **Drag-and-drop** to reorder. **Filter** by status — active, needs attention, or show all. **Search** by name or path.
-
-### Notifications
-In-app toasts and **OS-native notifications** when any agent completes or errors. Never miss a result.
-
-### Light & Dark Themes
-Beautiful **Catppuccin**-inspired palettes (Latte & Mocha) with warm pastels, soft gradients, and a playful chunky design. Toggle with `Shift+Cmd+T` (`Shift+Ctrl+T` on Windows/Linux). Persists across sessions.
+Execute commands in an agent's working directory with live stdout/stderr streaming. Command output is isolated per agent, even when multiple agents point at the same repo.
 
 ### Automations
-Schedule prompts to run automatically — **daily**, **weekly**, **monthly**, or at a **custom interval**. Pick specific days of the week, target an existing agent or spin up a new one. Monitor running automations and view run history.
 
-### Skills Browser
-Browse and search installed Claude Code plugins, skills, and slash commands. See metadata, arguments, and file paths at a glance.
-
-### CLAUDE.md Editor
-Edit your project and user `CLAUDE.md` files without leaving the app. Two-tab editor with create, save, and live preview — keep your agent instructions in sync.
-
-### Agent Config Panel
-Fine-tune each agent: change the model, set system prompts, configure max turns and budget limits, manage permission modes, and control allowed/disallowed tools. Changes that require a restart are clearly marked with a "Save & Restart" button.
-
-### MCP Server Management
-Add, remove, and manage MCP (Model Context Protocol) servers directly from the UI. Supports both stdio and SSE transports, with scope control (user vs. project). No more editing JSON configs by hand.
-
-### Hooks & Skills Editor
-Configure Claude Code hooks (PreToolUse, PostToolUse, etc.) and manage custom skills — all through a visual editor. Create skills with markdown bodies, set allowed tools, and organize your automation workflows.
-
-### Agent Templates
-Start new agents from pre-built templates: Code Reviewer, Bug Fixer, Doc Writer, and Refactor Pro. Each template pre-configures the agent with a specialized system prompt.
+Schedule prompts daily, weekly, monthly, or on a custom interval. Automations can target an existing agent or create a fresh one and are tracked while running.
 
 ### Conversation Export
-Copy any agent's conversation as formatted Markdown with one click. Great for sharing results, creating documentation, or archiving completed work.
 
-### Keyboard-First
-Every important action has a shortcut. See the full list in the [Keyboard Shortcuts](#keyboard-shortcuts) section below, or press `Cmd+K` (`Ctrl+K` on Windows/Linux) in the app.
+Copy an agent conversation as Markdown for handoff, notes, or archival.
 
----
+### Notifications
+
+Get in-app toasts and OS-native notifications when agents finish, error, or need input.
+
+### Theme + Keyboard Workflow
+
+The app is built to be fast from the keyboard, with persistent theme choice, queue navigation, and quick actions for git, terminal, run, and config flows.
+
+### Claude Ecosystem Tools
+
+For Claude-based workflows, Chorus also includes a `CLAUDE.md` editor, MCP server management, hooks editing, skills editing, and Claude CLI terminal handoff.
 
 ## Installation
 
+### Supported Platforms
+
+- macOS: Apple Silicon and Intel
+- Windows: x64
+- Linux: x64
+
+macOS is currently the best-tested environment. Windows and Linux release assets are built in CI and published on GitHub Releases.
+
 ### Prerequisites
 
-- [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code) installed and authenticated
-- [Node.js](https://nodejs.org/) 18+
-- [Rust](https://rustup.rs/) toolchain
+Install and authenticate Claude Code:
 
-### From Source
+```bash
+npm install -g @anthropic-ai/claude-code
+```
+
+For source builds you will also need:
+
+- Node.js 20 recommended
+- Rust stable toolchain
+
+### Download a Release
+
+Download the latest release from the [Releases page](https://github.com/Jasonmart1002/Chorus/releases/latest) and choose the asset that matches your OS:
+
+- macOS Apple Silicon: `aarch64` `.dmg`
+- macOS Intel: `x64` `.dmg`
+- Windows: `.msi` or `.exe`
+- Linux: `.deb` or `.AppImage`
+
+Open-source release builds are currently unsigned. On first launch, macOS Gatekeeper or Windows SmartScreen may warn before letting you open the app.
+
+### Build From Source
 
 ```bash
 git clone https://github.com/Jasonmart1002/Chorus.git
 cd Chorus
-npm install
-npx tauri build
+npm ci
+npm run tauri dev
 ```
 
-The built app will be in `src-tauri/target/release/bundle/`.
+To produce release bundles locally:
 
-### Download
+```bash
+npm run tauri build
+```
 
-Grab the latest build from the [Releases page](https://github.com/Jasonmart1002/Chorus/releases/latest).
+Build output lands in `src-tauri/target/release/bundle/`.
 
 ---
 
@@ -183,137 +197,157 @@ Grab the latest build from the [Releases page](https://github.com/Jasonmart1002/
 ### Create an Agent
 
 1. Click **+ New Agent** or press `Cmd+N` (`Ctrl+N`)
-2. Enter a name and select a working directory
-3. Optionally choose a model and permission mode
-4. The agent spawns immediately and is ready for prompts
+2. Pick a working directory
+3. Optionally set a model, permission mode, and template
+4. Start prompting
 
 ### Work in Parallel
 
-Send a prompt to one agent, switch to another with `Cmd+2` (`Ctrl+2`), send a different prompt. Both run simultaneously. The sidebar shows live status for every agent — green for working, yellow for waiting, red for errors.
+Switch agents with `Cmd+1` through `Cmd+9`, `Cmd+J`, or `Shift+Cmd+J`. Every agent keeps its own transcript and status, so you can review or steer them independently.
 
 ### Plan Mode
 
-Toggle with `Shift+Tab` before sending. The agent will draft an implementation plan for your approval before writing any code.
+Use `Shift+Tab` in the prompt box to switch between normal prompting and plan-first prompting. Chorus prepends plan instructions before sending the prompt.
 
-### Vibe Mode
+### Stop and Restart
 
-Press `Shift+Cmd+V` (`Shift+Ctrl+V`) to enter Vibe Mode. Chorus queues up every agent that's waiting for input and presents them one at a time. Respond, skip, or let the queue guide your workflow. Great for managing 5+ agents at once.
+Claude agents restart with the same session and can resume conversation state.
 
-### Stop & Resume
+### Claude-Specific Tools
 
-Hit **Stop** to interrupt an agent mid-task. Chorus transparently restarts the process with the same session — the conversation history is preserved and the agent picks up right where it was.
+When using Claude agents, Chorus can also:
+
+- Open `claude --resume` in your terminal
+- Edit project and user `CLAUDE.md`
+- Manage MCP servers
+- Edit hooks and custom skills
+- Browse installed Claude plugins and slash commands
 
 ---
 
 ## Keyboard Shortcuts
 
-> On Windows/Linux, replace **Cmd** with **Ctrl**.
+> On Windows and Linux, replace **Cmd** with **Ctrl**.
 
-| Shortcut | Action |
-|----------|--------|
-| `Cmd+N` | New agent |
-| `Cmd+1` – `Cmd+9` | Switch to agent 1–9 |
-| `Cmd+J` / `Shift+Cmd+J` | Next / Previous agent |
-| `Cmd+Enter` | Send prompt |
-| `Shift+Tab` | Toggle plan mode |
-| `Cmd+F` | Focus search |
-| `Cmd+L` | Focus prompt input |
-| `Shift+Cmd+V` | Toggle Vibe Mode |
-| `Shift+Cmd+S` | Skip agent (Vibe Mode) |
-| `Shift+Cmd+G` | Git menu |
-| `Shift+Cmd+R` | Run dialog |
-| `Shift+Cmd+E` | Terminal menu |
-| `Shift+Cmd+P` | Skills & Plugins |
-| `Shift+Cmd+A` | Automations |
-| `Shift+Cmd+M` | MCP Servers |
-| `Shift+Cmd+H` | Hooks & Skills |
-| `Cmd+.` | Agent Config |
-| `Shift+Cmd+T` | Toggle light/dark theme |
-| `Cmd+K` | Show all shortcuts |
+| Shortcut                | Action                          |
+| ----------------------- | ------------------------------- |
+| `Cmd+N`                 | New agent                       |
+| `Cmd+1` - `Cmd+9`       | Switch to agent 1-9             |
+| `Cmd+J` / `Shift+Cmd+J` | Next / previous agent           |
+| `Cmd+Enter`             | Send prompt                     |
+| `Shift+Tab`             | Toggle prompt mode              |
+| `Cmd+F`                 | Focus sidebar search            |
+| `Cmd+L`                 | Focus prompt input              |
+| `Shift+Cmd+V`           | Toggle Vibe Mode                |
+| `Shift+Cmd+S`           | Skip current agent in Vibe Mode |
+| `Shift+Cmd+G`           | Open Git actions                |
+| `Shift+Cmd+R`           | Open Run dialog                 |
+| `Shift+Cmd+E`           | Open Terminal actions           |
+| `Shift+Cmd+P`           | Toggle Skills view              |
+| `Shift+Cmd+A`           | Toggle Automations view         |
+| `Shift+Cmd+M`           | Toggle MCP view                 |
+| `Shift+Cmd+H`           | Toggle Hooks view               |
+| `Cmd+.`                 | Open agent config               |
+| `Shift+Cmd+T`           | Toggle theme                    |
+| `Cmd+K`                 | Show shortcut help              |
+
+---
+
+## Known Limitations
+
+- Chorus manages the local Claude Code CLI; it does not install, update, or authenticate it for you.
+- Open-source release builds are currently unsigned, so first-launch OS warnings are expected on macOS and Windows.
+- Windows and Linux builds are published, but the heaviest local validation in this repo has been on macOS.
 
 ---
 
 ## Architecture
 
-```
-┌──────────────────────────────────────────────┐
-│              React + Zustand UI              │
-│         (streaming messages, controls)        │
-└────────────────────┬─────────────────────────┘
-                     │ Tauri IPC (invoke / listen)
-┌────────────────────┴─────────────────────────┐
-│              Rust Backend (Tauri)             │
-│     Agent lifecycle, PID registry,           │
-│     automations scheduler, events            │
-└──┬──────────┬──────────┬─────────────────────┘
-   │          │          │  NDJSON stdin/stdout
-┌──┴──┐  ┌───┴──┐  ┌───┴──┐
-│claude│  │claude│  │claude│  ... one process per agent
-└─────┘  └──────┘  └──────┘
+```text
+┌────────────────────────────────────────────────────┐
+│                 React + Zustand UI                 │
+│      streaming transcripts, controls, dialogs      │
+└───────────────────────┬────────────────────────────┘
+                        │ Tauri IPC (invoke / listen)
+┌───────────────────────┴────────────────────────────┐
+│                 Rust Backend (Tauri)               │
+│  agent lifecycle, adapters, automations, commands  │
+└───────────────────────┬────────────────────────────┘
+                        │
+                   Claude Code
 ```
 
-Each agent runs as a `claude -p --output-format stream-json` process. The Rust backend parses the NDJSON stream, infers agent status from message types, and emits events to the frontend in real time. A global PID registry ensures all child processes are cleaned up on exit.
+The Rust backend manages the Claude Code process registry, persists agent state, and emits real-time events that the React frontend renders.
 
 ---
 
 ## Tech Stack
 
-| Layer | Technology |
-|-------|-----------|
-| Frontend | React 19, TypeScript, Vite, Zustand |
-| Desktop | Tauri v2 (Rust) |
-| Styling | Catppuccin palettes, custom CSS |
-| AI Backend | Claude Code CLI (stream-json mode) |
-| Fonts | Nunito, Space Grotesk, JetBrains Mono |
+| Layer      | Technology                          |
+| ---------- | ----------------------------------- |
+| Frontend   | React 19, TypeScript, Vite, Zustand |
+| Desktop    | Tauri v2 (Rust)                     |
+| Styling    | Custom theme system and CSS         |
+| AI Backend | Claude Code CLI                     |
+| Rendering  | React Markdown, syntax highlighting |
 
 ---
 
 ## Development
 
 ```bash
-npm install
-npx tauri dev
+npm ci
+npm run tauri dev
 ```
 
-This starts Vite with HMR on `localhost:1420` and launches the Tauri window. Frontend changes hot-reload instantly; Rust changes trigger a recompile.
+Useful verification commands:
+
+```bash
+npm run build
+cd src-tauri && cargo fmt --check
+cd src-tauri && cargo clippy --all-targets --all-features -- -D warnings
+cd src-tauri && cargo test
+```
 
 ### Project Structure
 
-```
+```text
 src/                    # React frontend
-  components/           # UI components (sidebar, main panel, dialogs)
-  store/                # Zustand stores (agent, automations, sidebar, theme, mcp, hooks, toast)
-  types/                # TypeScript type definitions (agent, messages, mcp, hooks)
-  lib/                  # Theme palettes, constants, platform utils
+  components/           # UI components, dialogs, views
+  store/                # Zustand state stores
+  types/                # TypeScript type definitions
+  lib/                  # Theme, constants, platform helpers
   hooks/                # Custom React hooks
 src-tauri/              # Rust backend
-  src/agent/            # Process spawning, state management, PID registry
-  src/agent/adapters/   # CLI adapter (Claude Code)
+  src/agent/            # Process spawning, state management, engine adapters
   src/automations.rs    # Automation scheduler and execution
-  src/skills.rs         # Plugin/skill discovery
-  src/mcp.rs            # MCP server management (list, add, remove)
-  src/commands.rs       # Tauri IPC command handlers (file I/O, agent config)
-  src/tray/             # System tray integration
+  src/skills.rs         # Claude plugin and skill discovery
+  src/mcp.rs            # MCP server management
+  src/commands.rs       # Tauri IPC command handlers
 ```
+
+Release steps for maintainers live in [RELEASING.md](RELEASING.md).
 
 ---
 
 ## Contributing
 
-Contributions are welcome! Here's how you can help:
+Contributions are welcome.
 
-- **Bug reports** — [Open an issue](https://github.com/Jasonmart1002/Chorus/issues/new) with steps to reproduce
-- **Feature requests** — [Open an issue](https://github.com/Jasonmart1002/Chorus/issues/new) describing the use case
-- **Pull requests** — Fork the repo, create a branch, and submit a PR
+- Bug reports: [open an issue](https://github.com/Jasonmart1002/Chorus/issues/new?template=bug_report.md)
+- Feature requests: [open an issue](https://github.com/Jasonmart1002/Chorus/issues/new?template=feature_request.md)
+- Pull requests: fork the repo, create a branch, and open a PR
+
+If your change touches Claude Code behavior, mention what you tested locally.
 
 ---
 
 ## License
 
-[MIT](LICENSE) — Jason Martinez
+[MIT](LICENSE) - Jason Martinez
 
 ---
 
 <p align="center">
-  <sub>Built with Tauri, React, and way too many Claude Code agents running at once.</sub>
+  <sub>Built with Tauri, React, and too many agents running at once.</sub>
 </p>

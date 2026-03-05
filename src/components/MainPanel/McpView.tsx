@@ -1,6 +1,17 @@
 import { useEffect, useState } from "react";
-import { Server, Plus, Search, Trash2, RefreshCw, Loader2, Globe, Terminal } from "lucide-react";
+import {
+  Server,
+  Plus,
+  Search,
+  Trash2,
+  RefreshCw,
+  Loader2,
+  Globe,
+  Terminal,
+} from "lucide-react";
+import { useAgentStore } from "../../store/agentStore";
 import { useMcpStore } from "../../store/mcpStore";
+import { basename } from "../../lib/platform";
 import { useThemeStore } from "../../store/themeStore";
 import { PASTEL_KEYS } from "../../lib/theme";
 import { IconButton } from "../ui/IconButton";
@@ -12,18 +23,48 @@ export function McpView() {
   const loading = useMcpStore((s) => s.loading);
   const fetchServers = useMcpStore((s) => s.fetchServers);
   const removeServer = useMcpStore((s) => s.removeServer);
+  const detectEngines = useAgentStore((s) => s.detectEngines);
+  const selectedAgentId = useAgentStore((s) => s.selectedAgentId);
+  const agents = useAgentStore((s) => s.agents);
   const theme = useThemeStore((s) => s.current);
 
   const [search, setSearch] = useState("");
   const [showAdd, setShowAdd] = useState(false);
+  const [claudeAvailable, setClaudeAvailable] = useState<boolean | null>(null);
+
+  const selectedAgent = selectedAgentId ? agents[selectedAgentId] : null;
+  const projectCwd = selectedAgent?.config.cwd;
 
   useEffect(() => {
-    fetchServers();
-  }, []);
+    let cancelled = false;
 
-  const filtered = servers.filter((s) =>
-    !search || s.name.toLowerCase().includes(search.toLowerCase()) ||
-    s.command.toLowerCase().includes(search.toLowerCase())
+    detectEngines()
+      .then((engines) => {
+        if (cancelled) return;
+        const available = engines.some(
+          (engine) => engine.engine === "claude" && engine.available,
+        );
+        setClaudeAvailable(available);
+        if (available) {
+          fetchServers(projectCwd);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setClaudeAvailable(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [detectEngines, fetchServers, projectCwd]);
+
+  const filtered = servers.filter(
+    (s) =>
+      !search ||
+      s.name.toLowerCase().includes(search.toLowerCase()) ||
+      s.command.toLowerCase().includes(search.toLowerCase()),
   );
 
   return (
@@ -81,19 +122,32 @@ export function McpView() {
               fontWeight: 500,
             }}
           >
-            {servers.length} server{servers.length !== 1 ? "s" : ""} configured
+            {projectCwd
+              ? `${servers.length} server${servers.length !== 1 ? "s" : ""} for ${basename(projectCwd)}`
+              : `${servers.length} user-level server${servers.length !== 1 ? "s" : ""}`}
           </div>
         </div>
         <IconButton
-          icon={loading ? <Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} /> : <RefreshCw size={14} />}
+          icon={
+            loading ? (
+              <Loader2
+                size={14}
+                style={{ animation: "spin 1s linear infinite" }}
+              />
+            ) : (
+              <RefreshCw size={14} />
+            )
+          }
           tooltip="Refresh"
-          onClick={fetchServers}
+          onClick={() => fetchServers(projectCwd)}
+          disabled={claudeAvailable === false}
           hoverColor={theme.sapphire}
         />
         <Button
           variant="primary"
           size="sm"
           onClick={() => setShowAdd(true)}
+          disabled={claudeAvailable === false}
           icon={<Plus size={13} />}
           style={{
             fontSize: 12,
@@ -142,9 +196,26 @@ export function McpView() {
 
       {/* Server list */}
       <div style={{ flex: 1, overflowY: "auto", padding: "0 24px 24px" }}>
-        {loading && servers.length === 0 ? (
-          <div style={{ padding: 40, textAlign: "center", color: theme.textMuted }}>
-            <Loader2 size={24} style={{ animation: "spin 1s linear infinite", marginBottom: 8 }} />
+        {claudeAvailable === false ? (
+          <div
+            style={{
+              padding: 40,
+              textAlign: "center",
+              color: theme.textMuted,
+              fontSize: 13,
+              fontFamily: theme.fontBody,
+            }}
+          >
+            Claude Code is required to manage MCP servers.
+          </div>
+        ) : loading && servers.length === 0 ? (
+          <div
+            style={{ padding: 40, textAlign: "center", color: theme.textMuted }}
+          >
+            <Loader2
+              size={24}
+              style={{ animation: "spin 1s linear infinite", marginBottom: 8 }}
+            />
             <div style={{ fontSize: 13 }}>Loading servers...</div>
           </div>
         ) : filtered.length === 0 ? (
@@ -157,14 +228,18 @@ export function McpView() {
               fontFamily: theme.fontBody,
             }}
           >
-            {search ? "No matching servers" : "No MCP servers configured. Add one to get started."}
+            {search
+              ? "No matching servers"
+              : "No MCP servers configured. Add one to get started."}
           </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {filtered.map((server, i) => {
               const pastelKey = PASTEL_KEYS[i % PASTEL_KEYS.length];
               const pastelColor = theme[pastelKey];
-              const isStdio = server.transport === "stdio" || !server.transport.includes("sse");
+              const isStdio =
+                server.transport === "stdio" ||
+                !server.transport.includes("sse");
               return (
                 <div
                   key={`${server.name}-${server.scope}`}
@@ -180,7 +255,9 @@ export function McpView() {
                     animation: `springIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) ${i * 0.04}s backwards`,
                   }}
                 >
-                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <div
+                    style={{ display: "flex", alignItems: "center", gap: 10 }}
+                  >
                     {isStdio ? (
                       <Terminal size={14} color={theme.teal} />
                     ) : (
@@ -202,8 +279,14 @@ export function McpView() {
                         fontSize: 9,
                         fontWeight: 700,
                         padding: "2px 8px",
-                        background: server.scope === "project" ? theme.teal + "22" : theme.lavender + "22",
-                        color: server.scope === "project" ? theme.teal : theme.lavender,
+                        background:
+                          server.scope === "project"
+                            ? theme.teal + "22"
+                            : theme.lavender + "22",
+                        color:
+                          server.scope === "project"
+                            ? theme.teal
+                            : theme.lavender,
                         borderRadius: theme.borderRadiusFull,
                         border: `1px solid ${server.scope === "project" ? theme.teal : theme.lavender}`,
                         textTransform: "uppercase",
@@ -214,7 +297,13 @@ export function McpView() {
                     <IconButton
                       icon={<Trash2 size={12} />}
                       tooltip="Remove server"
-                      onClick={() => removeServer(server.name, server.scope || "user")}
+                      onClick={() =>
+                        removeServer(
+                          server.name,
+                          server.scope || "user",
+                          projectCwd,
+                        )
+                      }
                       hoverColor={theme.peach}
                       size="sm"
                     />
@@ -243,7 +332,13 @@ export function McpView() {
         )}
       </div>
 
-      {showAdd && <AddMcpDialog open={showAdd} onClose={() => setShowAdd(false)} />}
+      {showAdd && (
+        <AddMcpDialog
+          open={showAdd}
+          onClose={() => setShowAdd(false)}
+          projectCwd={projectCwd}
+        />
+      )}
     </div>
   );
 }

@@ -14,7 +14,8 @@ pub fn run() {
     let mut mgr = agent::manager::AgentManager::new();
     mgr.load_saved();
     let agent_manager: ManagerState = Arc::new(Mutex::new(mgr));
-    let running_cmd: commands::RunningCommandState = Arc::new(Mutex::new(std::collections::HashMap::new()));
+    let running_cmd: commands::RunningCommandState =
+        Arc::new(Mutex::new(std::collections::HashMap::new()));
     let automations_state: automations::AutomationsStateHandle =
         Arc::new(Mutex::new(automations::AutomationsState::load()));
     let running_automations: automations::RunningAutomationsHandle =
@@ -26,7 +27,7 @@ pub fn run() {
         .manage(agent_manager.clone())
         .manage(running_cmd)
         .manage(automations_state.clone())
-        .manage(running_automations)
+        .manage(running_automations.clone())
         .invoke_handler(tauri::generate_handler![
             commands::create_agent,
             commands::send_prompt,
@@ -65,12 +66,13 @@ pub fn run() {
 
             // Spawn background scheduler that ticks every 60 seconds
             let auto_state = automations_state.clone();
+            let running = running_automations.clone();
             let mgr = agent_manager.clone();
             let handle = app.handle().clone();
             tauri::async_runtime::spawn(async move {
                 loop {
                     tokio::time::sleep(std::time::Duration::from_secs(60)).await;
-                    automations::tick(&auto_state, &mgr, &handle).await;
+                    automations::tick(&auto_state, &running, &mgr, &handle).await;
                 }
             });
 

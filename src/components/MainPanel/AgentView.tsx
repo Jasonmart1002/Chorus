@@ -10,10 +10,11 @@ interface Props {
   agentId: string;
 }
 
-function RestartBanner({ agentId }: { agentId: string }) {
+function RestartBanner({ agentId, engine }: { agentId: string; engine: string }) {
   const theme = useThemeStore((s) => s.current);
   const restoreAgent = useAgentStore((s) => s.restoreAgent);
   const [loading, setLoading] = useState(false);
+  const resumable = engine === "claude";
 
   const handleRestart = async () => {
     setLoading(true);
@@ -64,7 +65,9 @@ function RestartBanner({ agentId }: { agentId: string }) {
             fontWeight: 600,
           }}
         >
-          This session has ended. Restart to continue the conversation.
+          {resumable
+            ? "This session has ended. Restart to continue the conversation."
+            : "This session has ended. Restart to begin a new session."}
         </div>
         <button
           onClick={handleRestart}
@@ -118,7 +121,7 @@ export function AgentView({ agentId }: Props) {
       <ContextSummary agent={agent} />
       <MessageStream key={agentId} messages={messages} agentId={agentId} />
       {isExited ? (
-        <RestartBanner agentId={agentId} />
+        <RestartBanner agentId={agentId} engine={agent.config.engine} />
       ) : (
         <PromptInput agentId={agentId} disabled={!canSend} />
       )}

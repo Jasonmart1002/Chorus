@@ -22,6 +22,7 @@ const PRESETS = [
 ];
 
 interface Props {
+  agentId: string;
   cwd: string;
   onClose: () => void;
 }
@@ -31,10 +32,10 @@ interface EnvVar {
   value: string;
 }
 
-export function RunDialog({ cwd, onClose }: Props) {
+export function RunDialog({ agentId, cwd, onClose }: Props) {
   const startCommand = useAgentStore((s) => s.startCommand);
   const killRunningCommand = useAgentStore((s) => s.killRunningCommand);
-  const commandState = useAgentStore((s) => s.commandStates[cwd]);
+  const commandState = useAgentStore((s) => s.commandStates[agentId]);
   const savedCommands = useAgentStore((s) => s.savedCommands);
   const dismissCommandOutput = useAgentStore((s) => s.dismissCommandOutput);
   const theme = useThemeStore((s) => s.current);
@@ -88,6 +89,7 @@ export function RunDialog({ cwd, onClose }: Props) {
       }
     }
     startCommand(
+      agentId,
       cwd,
       command.trim(),
       Object.keys(envMap).length > 0 ? envMap : undefined
@@ -95,7 +97,7 @@ export function RunDialog({ cwd, onClose }: Props) {
   };
 
   const handleStop = async () => {
-    await killRunningCommand(cwd);
+    await killRunningCommand(agentId);
   };
 
   const dirName = basename(cwd);
@@ -309,7 +311,7 @@ export function RunDialog({ cwd, onClose }: Props) {
                 <IconButton
                   icon={<X size={12} />}
                   tooltip="Dismiss"
-                  onClick={() => dismissCommandOutput(cwd)}
+                  onClick={() => dismissCommandOutput(agentId)}
                   size="sm"
                 />
               )}

@@ -66,13 +66,21 @@ fn claude_dir() -> Option<PathBuf> {
 fn parse_frontmatter(content: &str) -> (serde_yaml::Value, String) {
     let trimmed = content.trim_start();
     if !trimmed.starts_with("---") {
-        return (serde_yaml::Value::Mapping(Default::default()), content.to_string());
+        return (
+            serde_yaml::Value::Mapping(Default::default()),
+            content.to_string(),
+        );
     }
 
     // Find the closing ---
     let after_first = match trimmed.get(3..) {
         Some(s) => s,
-        None => return (serde_yaml::Value::Mapping(Default::default()), content.to_string()),
+        None => {
+            return (
+                serde_yaml::Value::Mapping(Default::default()),
+                content.to_string(),
+            )
+        }
     };
     if let Some(end_idx) = after_first.find("\n---") {
         let yaml_str = &after_first[..end_idx];
@@ -85,12 +93,19 @@ fn parse_frontmatter(content: &str) -> (serde_yaml::Value, String) {
         if after_first.as_bytes().get(body_start) == Some(&b'\n') {
             body_start += 1;
         }
-        let body = after_first.get(body_start..).unwrap_or("").trim_start_matches('\n').to_string();
-        let frontmatter: serde_yaml::Value =
-            serde_yaml::from_str(yaml_str).unwrap_or(serde_yaml::Value::Mapping(Default::default()));
+        let body = after_first
+            .get(body_start..)
+            .unwrap_or("")
+            .trim_start_matches('\n')
+            .to_string();
+        let frontmatter: serde_yaml::Value = serde_yaml::from_str(yaml_str)
+            .unwrap_or(serde_yaml::Value::Mapping(Default::default()));
         (frontmatter, body)
     } else {
-        (serde_yaml::Value::Mapping(Default::default()), content.to_string())
+        (
+            serde_yaml::Value::Mapping(Default::default()),
+            content.to_string(),
+        )
     }
 }
 
@@ -122,9 +137,7 @@ fn scan_skills(plugin_path: &Path) -> Vec<SkillInfo> {
                     if let Ok(content) = fs::read_to_string(&skill_md) {
                         let (fm, _body) = parse_frontmatter(&content);
                         let name = yaml_str(&fm, "name")
-                            .unwrap_or_else(|| {
-                                entry.file_name().to_string_lossy().to_string()
-                            });
+                            .unwrap_or_else(|| entry.file_name().to_string_lossy().to_string());
                         let description = yaml_str(&fm, "description").unwrap_or_default();
                         skills.push(SkillInfo {
                             name,
@@ -178,18 +191,66 @@ fn read_plugin_metadata(plugin_path: &Path) -> (String, String, String, Option<P
     let meta_path = plugin_path.join(".claude-plugin").join("plugin.json");
     if let Ok(content) = fs::read_to_string(&meta_path) {
         if let Ok(val) = serde_json::from_str::<serde_json::Value>(&content) {
-            let name = val.get("name").and_then(|v| v.as_str()).unwrap_or("Unknown").to_string();
-            let version = val.get("version").and_then(|v| v.as_str()).unwrap_or("0.0.0").to_string();
-            let description = val.get("description").and_then(|v| v.as_str()).unwrap_or("").to_string();
+            let name = val
+                .get("name")
+                .and_then(|v| v.as_str())
+                .unwrap_or("Unknown")
+                .to_string();
+            let version = val
+                .get("version")
+                .and_then(|v| v.as_str())
+                .unwrap_or("0.0.0")
+                .to_string();
+            let description = val
+                .get("description")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string();
             let author = val.get("author").and_then(|a| {
                 let author_name = a.get("name").and_then(|v| v.as_str())?.to_string();
-                let email = a.get("email").and_then(|v| v.as_str()).map(|s| s.to_string());
-                Some(PluginAuthor { name: author_name, email })
+                let email = a
+                    .get("email")
+                    .and_then(|v| v.as_str())
+                    .map(|s| s.to_string());
+                Some(PluginAuthor {
+                    name: author_name,
+                    email,
+                })
             });
             return (name, version, description, author);
         }
     }
-    ("Unknown".to_string(), "0.0.0".to_string(), String::new(), None)
+    (
+        "Unknown".to_string(),
+        "0.0.0".to_string(),
+        String::new(),
+        None,
+    )
+}
+
+fn derive_plugin_name(plugin_id: &str) -> String {
+    let without_version = match plugin_id.rsplit_once('@') {
+        Some((base, _version)) if !base.is_empty() => base,
+        _ => plugin_id,
+    };
+
+    let slug = without_version
+        .rsplit('/')
+        .next()
+        .filter(|segment| !segment.is_empty())
+        .unwrap_or(without_version);
+
+    slug.split('-')
+        .filter(|segment| !segment.is_empty())
+        .map(|word| {
+            let mut chars = word.chars();
+            match chars.next() {
+                None => String::new(),
+                Some(first) => first.to_uppercase().to_string() + chars.as_str(),
+            }
+        })
+        .collect::<Vec<_>>()
+        .join(" ")
 }
 
 fn get_skills_data() -> Result<SkillsData, String> {
@@ -224,9 +285,7 @@ fn get_skills_data() -> Result<SkillsData, String> {
     if let Some(plugins_map) = installed.get("plugins").and_then(|v| v.as_object()) {
         for (plugin_id, entries) in plugins_map {
             // Each plugin has an array of installations; take the first
-            let entry = entries
-                .as_array()
-                .and_then(|arr| arr.first());
+            let entry = entries.as_array().and_then(|arr| arr.first());
 
             let entry = match entry {
                 Some(e) => e,
@@ -244,24 +303,19 @@ fn get_skills_data() -> Result<SkillsData, String> {
 
             let install_path = PathBuf::from(install_path_str);
             let enabled = enabled_plugins.get(plugin_id).copied().unwrap_or(false);
-            let installed_at = entry.get("installedAt").and_then(|v| v.as_str()).map(|s| s.to_string());
-            let last_updated = entry.get("lastUpdated").and_then(|v| v.as_str()).map(|s| s.to_string());
+            let installed_at = entry
+                .get("installedAt")
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string());
+            let last_updated = entry
+                .get("lastUpdated")
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string());
 
             let (mut name, version, description, author) = read_plugin_metadata(&install_path);
             // Derive a readable name from the plugin ID when plugin.json is missing
             if name == "Unknown" {
-                let short_id = plugin_id.split('@').next().unwrap_or(plugin_id);
-                name = short_id
-                    .split('-')
-                    .map(|w| {
-                        let mut c = w.chars();
-                        match c.next() {
-                            None => String::new(),
-                            Some(f) => f.to_uppercase().to_string() + c.as_str(),
-                        }
-                    })
-                    .collect::<Vec<_>>()
-                    .join(" ");
+                name = derive_plugin_name(plugin_id);
             }
             let skills = scan_skills(&install_path);
             let commands = scan_commands(&install_path);
@@ -295,4 +349,25 @@ fn get_skills_data() -> Result<SkillsData, String> {
 #[tauri::command]
 pub async fn get_installed_skills() -> Result<SkillsData, String> {
     get_skills_data()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::derive_plugin_name;
+
+    #[test]
+    fn derive_plugin_name_handles_scoped_ids_with_versions() {
+        assert_eq!(
+            derive_plugin_name("@anthropic-ai/code-review@1.2.3"),
+            "Code Review"
+        );
+    }
+
+    #[test]
+    fn derive_plugin_name_handles_scoped_ids_without_versions() {
+        assert_eq!(
+            derive_plugin_name("@anthropic-ai/code-review"),
+            "Code Review"
+        );
+    }
 }

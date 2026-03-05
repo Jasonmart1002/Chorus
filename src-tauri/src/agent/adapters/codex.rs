@@ -39,7 +39,9 @@ impl CodexAdapter {
             {
                 let npm_root = String::from_utf8_lossy(&output.stdout).trim().to_string();
                 if !npm_root.is_empty() {
-                    let npm_bin = PathBuf::from(&npm_root).parent().map(|p| p.join("bin/codex"));
+                    let npm_bin = PathBuf::from(&npm_root)
+                        .parent()
+                        .map(|p| p.join("bin/codex"));
                     if let Some(p) = npm_bin {
                         if p.exists() {
                             return Ok(p);
@@ -83,14 +85,9 @@ impl CodexAdapter {
                     chars.next(); // consume '['
                     while let Some(&next) = chars.peek() {
                         chars.next();
-                        if next == 'm'
-                            || next.is_ascii_uppercase()
-                            || (next.is_ascii_lowercase() && next != 'm')
-                        {
-                            // Most ANSI sequences end with a letter
-                            if next.is_ascii_alphabetic() {
-                                break;
-                            }
+                        // Most ANSI sequences end with a letter.
+                        if next.is_ascii_alphabetic() {
+                            break;
                         }
                     }
                 }
@@ -111,11 +108,7 @@ impl CliAdapter for CodexAdapter {
         Self::find_binary()
     }
 
-    fn build_args(
-        &self,
-        _session_id: &str,
-        config: &AgentConfig,
-    ) -> Vec<String> {
+    fn build_args(&self, _session_id: &str, config: &AgentConfig) -> Vec<String> {
         let mut args = vec![];
 
         // Map our permission modes to Codex modes
@@ -206,7 +199,11 @@ impl CliAdapter for CodexAdapter {
     }
 
     fn format_approval(&self, approved: bool) -> String {
-        if approved { "y".to_string() } else { "n".to_string() }
+        if approved {
+            "y".to_string()
+        } else {
+            "n".to_string()
+        }
     }
 
     fn supports_sessions(&self) -> bool {

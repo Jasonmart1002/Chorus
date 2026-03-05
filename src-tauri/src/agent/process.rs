@@ -3,10 +3,13 @@ use std::sync::{Arc, Mutex, OnceLock};
 use tauri::Emitter;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::process::{Child, Command};
-use tokio::sync::mpsc;
+use tokio::sync::{mpsc, Mutex as AsyncMutex};
 
 use super::adapters::{self, ParsedEvent};
+use super::manager::AgentManager;
 use super::state::{AgentConfig, AgentStatus, Engine};
+
+type ManagerHandle = Arc<AsyncMutex<AgentManager>>;
 
 /// Global PID registry — tracks all spawned CLI processes so they can be
 /// killed reliably on app exit. Uses std::sync::Mutex (not tokio) so it's
@@ -22,7 +25,7 @@ pub fn kill_all_children() {
         for &pid in pids.iter() {
             #[cfg(unix)]
             unsafe {
-                libc::kill(pid as i32, libc::SIGKILL);
+                libc::kill(-(pid as i32), libc::SIGKILL);
             }
             #[cfg(windows)]
             {
@@ -85,15 +88,13 @@ impl AgentProcess {
         cwd: String,
         session_id: String,
         config: &AgentConfig,
+        manager: ManagerHandle,
         app_handle: tauri::AppHandle,
     ) -> Result<Self, String> {
         let engine = config.engine.clone();
         let adapter = adapters::create_adapter(&engine);
         let binary_path = adapter.resolve_binary()?;
-        let args = adapter.build_args(
-            &session_id,
-            config,
-        );
+        let args = adapter.build_args(&session_id, config);
 
         let mut cmd = Command::new(&binary_path);
         cmd.args(&args);
@@ -150,6 +151,7 @@ impl AgentProcess {
         let suppress_exit_clone = suppress_exit.clone();
         let spawned_pid = child.id();
         let stdout_adapter = adapters::create_adapter(&engine);
+        let manager_for_stdout = manager.clone();
         tokio::spawn(async move {
             let reader = BufReader::new(stdout);
             let mut lines = reader.lines();
@@ -168,15 +170,11 @@ impl AgentProcess {
                         );
 
                         // Detect status from message type
-                        let msg_type =
-                            json.get("type").and_then(|v| v.as_str()).unwrap_or("");
-                        let subtype =
-                            json.get("subtype").and_then(|v| v.as_str()).unwrap_or("");
+                        let msg_type = json.get("type").and_then(|v| v.as_str()).unwrap_or("");
+                        let subtype = json.get("subtype").and_then(|v| v.as_str()).unwrap_or("");
 
                         let new_status = match msg_type {
-                            "system" if subtype == "init" => {
-                                Some(AgentStatus::AwaitingInput)
-                            }
+                            "system" if subtype == "init" => Some(AgentStatus::AwaitingInput),
                             "assistant" => Some(AgentStatus::Working),
                             "result" => {
                                 if subtype == "success" {
@@ -188,7 +186,23 @@ impl AgentProcess {
                             _ => None,
                         };
 
+                        if msg_type == "result" {
+                            let total_cost = json.get("total_cost_usd").and_then(|v| v.as_f64());
+                            let num_turns = json
+                                .get("num_turns")
+                                .and_then(|v| v.as_u64())
+                                .and_then(|v| u32::try_from(v).ok());
+                            if let (Some(cost), Some(turns)) = (total_cost, num_turns) {
+                                let mut mgr = manager_for_stdout.lock().await;
+                                mgr.update_cost(&aid, cost, turns);
+                            }
+                        }
+
                         if let Some(status) = new_status {
+                            {
+                                let mut mgr = manager_for_stdout.lock().await;
+                                mgr.update_status(&aid, status.clone());
+                            }
                             let _ = handle.emit(
                                 "agent-status-changed",
                                 StatusChange {
@@ -236,6 +250,10 @@ impl AgentProcess {
                                 message: msg,
                             },
                         );
+                        {
+                            let mut mgr = manager_for_stdout.lock().await;
+                            mgr.update_status(&aid, AgentStatus::AwaitingInput);
+                        }
                         let _ = handle.emit(
                             "agent-status-changed",
                             StatusChange {
@@ -308,6 +326,11 @@ impl AgentProcess {
                 unregister_pid(pid);
             }
             if !suppress_exit_clone.load(Ordering::Relaxed) {
+                {
+                    let mut mgr = manager_for_stdout.lock().await;
+                    mgr.remove_process(&aid);
+                    mgr.update_status(&aid, AgentStatus::Exited);
+                }
                 let _ = handle.emit(
                     "agent-status-changed",
                     StatusChange {
@@ -385,7 +408,7 @@ impl AgentProcess {
         if let Some(pid) = self.child.id() {
             #[cfg(unix)]
             unsafe {
-                libc::kill(pid as i32, libc::SIGTERM);
+                libc::kill(-(pid as i32), libc::SIGTERM);
             }
             #[cfg(windows)]
             {
@@ -403,6 +426,16 @@ impl AgentProcess {
 
     /// Force kill the process immediately (SIGKILL).
     pub fn kill(&mut self) -> Result<(), String> {
+        #[cfg(unix)]
+        {
+            if let Some(pid) = self.child.id() {
+                let ret = unsafe { libc::kill(-(pid as i32), libc::SIGKILL) };
+                if ret == 0 {
+                    return Ok(());
+                }
+            }
+        }
+
         self.child
             .start_kill()
             .map_err(|e| format!("Failed to kill process: {}", e))

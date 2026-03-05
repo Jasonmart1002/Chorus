@@ -26,6 +26,30 @@ fn find_claude_binary() -> Result<PathBuf, String> {
     Err("Could not find 'claude' binary".to_string())
 }
 
+fn command_cwd(cwd: Option<&str>) -> Result<PathBuf, String> {
+    if let Some(path) = cwd {
+        let path = PathBuf::from(path);
+        if !path.is_dir() {
+            return Err(format!("Directory does not exist: {}", path.display()));
+        }
+        return Ok(path);
+    }
+
+    #[cfg(unix)]
+    {
+        std::env::var("HOME")
+            .map(PathBuf::from)
+            .map_err(|_| "HOME is not set".to_string())
+    }
+
+    #[cfg(windows)]
+    {
+        std::env::var("USERPROFILE")
+            .map(PathBuf::from)
+            .map_err(|_| "USERPROFILE is not set".to_string())
+    }
+}
+
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct McpServer {
     pub name: String,
@@ -42,11 +66,13 @@ pub struct McpServer {
 }
 
 #[tauri::command]
-pub async fn mcp_list() -> Result<Vec<McpServer>, String> {
+pub async fn mcp_list(cwd: Option<String>) -> Result<Vec<McpServer>, String> {
     let binary = find_claude_binary()?;
+    let cwd = command_cwd(cwd.as_deref())?;
 
     let output = tokio::process::Command::new(&binary)
         .args(["mcp", "list"])
+        .current_dir(cwd)
         .output()
         .await
         .map_err(|e| format!("Failed to run claude mcp list: {}", e))?;
@@ -71,7 +97,12 @@ pub async fn mcp_list() -> Result<Vec<McpServer>, String> {
             let name = name_part.trim().to_string();
             let rest = rest.trim();
             let (command, scope) = if let Some(idx) = rest.rfind('(') {
-                let scope = rest.get(idx + 1..).unwrap_or("").trim_end_matches(')').trim().to_string();
+                let scope = rest
+                    .get(idx + 1..)
+                    .unwrap_or("")
+                    .trim_end_matches(')')
+                    .trim()
+                    .to_string();
                 let cmd = rest.get(..idx).unwrap_or("").trim().to_string();
                 (cmd, scope)
             } else {
@@ -79,7 +110,11 @@ pub async fn mcp_list() -> Result<Vec<McpServer>, String> {
             };
             servers.push(McpServer {
                 name,
-                transport: if command.starts_with("http") { "sse".to_string() } else { "stdio".to_string() },
+                transport: if command.starts_with("http") {
+                    "sse".to_string()
+                } else {
+                    "stdio".to_string()
+                },
                 command,
                 args: Vec::new(),
                 scope,
@@ -99,13 +134,15 @@ pub async fn mcp_add(
     args: Vec<String>,
     env: std::collections::HashMap<String, String>,
     scope: String,
+    cwd: Option<String>,
 ) -> Result<(), String> {
     let binary = find_claude_binary()?;
+    if scope == "project" && cwd.is_none() {
+        return Err("Project-scoped MCP servers require a selected workspace".to_string());
+    }
+    let cwd = command_cwd(cwd.as_deref())?;
 
-    let mut cmd_args = vec![
-        "mcp".to_string(),
-        "add".to_string(),
-    ];
+    let mut cmd_args = vec!["mcp".to_string(), "add".to_string()];
 
     // Add scope flag
     match scope.as_str() {
@@ -115,18 +152,19 @@ pub async fn mcp_add(
 
     // Add transport
     if transport == "sse" || transport == "http" {
-        cmd_args.push("--transport=sse".to_string());
+        cmd_args.push(format!("--transport={}", transport));
     }
 
     // Server name
     cmd_args.push(name);
 
-    // Command or URL
-    cmd_args.push(command_or_url);
-
-    // Additional args
-    for arg in &args {
-        cmd_args.push(arg.clone());
+    if transport == "stdio" {
+        cmd_args.push("--".to_string());
+        cmd_args.push(command_or_url);
+        cmd_args.extend(args);
+    } else {
+        cmd_args.push(command_or_url);
+        cmd_args.extend(args);
     }
 
     // Environment variables
@@ -137,6 +175,7 @@ pub async fn mcp_add(
 
     let output = tokio::process::Command::new(&binary)
         .args(&cmd_args)
+        .current_dir(cwd)
         .output()
         .await
         .map_err(|e| format!("Failed to run claude mcp add: {}", e))?;
@@ -150,8 +189,12 @@ pub async fn mcp_add(
 }
 
 #[tauri::command]
-pub async fn mcp_remove(name: String, scope: String) -> Result<(), String> {
+pub async fn mcp_remove(name: String, scope: String, cwd: Option<String>) -> Result<(), String> {
     let binary = find_claude_binary()?;
+    if scope == "project" && cwd.is_none() {
+        return Err("Project-scoped MCP servers require a selected workspace".to_string());
+    }
+    let cwd = command_cwd(cwd.as_deref())?;
 
     let scope_flag = match scope.as_str() {
         "project" => "--scope=project",
@@ -160,6 +203,7 @@ pub async fn mcp_remove(name: String, scope: String) -> Result<(), String> {
 
     let output = tokio::process::Command::new(&binary)
         .args(["mcp", "remove", scope_flag, &name])
+        .current_dir(cwd)
         .output()
         .await
         .map_err(|e| format!("Failed to run claude mcp remove: {}", e))?;

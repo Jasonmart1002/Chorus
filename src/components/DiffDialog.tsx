@@ -31,6 +31,7 @@ export function DiffDialog({ cwd, onClose }: Props) {
   const [exitCode, setExitCode] = useState<number | null | undefined>(undefined);
   const outputRef = useRef<HTMLDivElement>(null);
   const runIdRef = useRef(0);
+  const activeRunIdRef = useRef<string | null>(null);
 
   const syntaxTheme = buildCodeSyntaxTheme(theme.fontCode);
   // Override font size for diff view
@@ -50,6 +51,8 @@ export function DiffDialog({ cwd, onClose }: Props) {
     if (!config) return;
 
     const id = ++runIdRef.current;
+    const runId = crypto.randomUUID();
+    activeRunIdRef.current = runId;
     setLines([]);
     setRunning(true);
     setExitCode(undefined);
@@ -58,6 +61,7 @@ export function DiffDialog({ cwd, onClose }: Props) {
       cwd,
       command: config.command,
       envVars: null,
+      runId,
     }).catch((err) => {
       if (runIdRef.current === id) {
         setLines([`Error: ${String(err)}`]);
@@ -73,19 +77,19 @@ export function DiffDialog({ cwd, onClose }: Props) {
     let unlistenDone: (() => void) | null = null;
 
     async function setup() {
-      unlistenOutput = await listen<{ cwd: string; line: string; stream: string }>(
+      unlistenOutput = await listen<{ run_id: string; cwd: string; line: string; stream: string }>(
         "command-output",
         (event) => {
-          if (event.payload.cwd === cwd) {
+          if (event.payload.run_id === activeRunIdRef.current) {
             setLines((prev) => [...prev, event.payload.line]);
           }
         }
       );
 
-      unlistenDone = await listen<{ cwd: string; exit_code: number | null }>(
+      unlistenDone = await listen<{ run_id: string; cwd: string; exit_code: number | null }>(
         "command-done",
         (event) => {
-          if (event.payload.cwd === cwd) {
+          if (event.payload.run_id === activeRunIdRef.current) {
             setRunning(false);
             setExitCode(event.payload.exit_code);
           }

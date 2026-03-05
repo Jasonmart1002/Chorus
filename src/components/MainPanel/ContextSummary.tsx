@@ -1,5 +1,18 @@
 import { useState, useEffect } from "react";
-import { Cpu, Folder, Play, Loader, GitBranch, ChevronDown, TerminalSquare, Zap, FileText, Settings, Copy, Check } from "lucide-react";
+import {
+  Cpu,
+  Folder,
+  Play,
+  Loader,
+  GitBranch,
+  ChevronDown,
+  TerminalSquare,
+  Zap,
+  FileText,
+  Settings,
+  Copy,
+  Check,
+} from "lucide-react";
 import type { Agent } from "../../types/agent";
 import { ENGINE_LABELS } from "../../types/agent";
 import { getStatusColors, STATUS_LABELS } from "../../lib/constants";
@@ -21,23 +34,28 @@ const EMPTY_MESSAGES: SDKMessage[] = [];
 const GIT_ACTIONS = [
   {
     label: "Commit changes",
-    prompt: "Review all current changes with `git diff` and `git status`, then create a well-structured commit with a descriptive message. Stage only relevant files.",
+    prompt:
+      "Review all current changes with `git diff` and `git status`, then create a well-structured commit with a descriptive message. Stage only relevant files.",
   },
   {
     label: "Create PR",
-    prompt: "Review all commits on the current branch vs main using `git log main..HEAD` and `git diff main...HEAD`. Then create a pull request with a clear title and summary using `gh pr create`.",
+    prompt:
+      "Review all commits on the current branch vs main using `git log main..HEAD` and `git diff main...HEAD`. Then create a pull request with a clear title and summary using `gh pr create`.",
   },
   {
     label: "Push to main",
-    prompt: "Check the current branch and status. If on main, push directly. If on a feature branch, merge to main first then push. Show me the commands before running them.",
+    prompt:
+      "Check the current branch and status. If on main, push directly. If on a feature branch, merge to main first then push. Show me the commands before running them.",
   },
   {
     label: "Stash changes",
-    prompt: "Stash all current changes with a descriptive message using `git stash push -m \"description\"`.",
+    prompt:
+      'Stash all current changes with a descriptive message using `git stash push -m "description"`.',
   },
   {
     label: "Show status",
-    prompt: "Run `git status` and `git log --oneline -10` and summarize the current state of the repo — branch, uncommitted changes, recent commits.",
+    prompt:
+      "Run `git status` and `git log --oneline -10` and summarize the current state of the repo — branch, uncommitted changes, recent commits.",
   },
 ];
 
@@ -56,7 +74,7 @@ export function ContextSummary({ agent }: Props) {
   const [showTermMenu, setShowTermMenu] = useState(false);
   const [showClaudeMd, setShowClaudeMd] = useState(false);
   const [showConfig, setShowConfig] = useState(false);
-  const commandState = useAgentStore((s) => s.commandStates[agent.config.cwd]);
+  const commandState = useAgentStore((s) => s.commandStates[agent.id]);
   const sendPrompt = useAgentStore((s) => s.sendPrompt);
   const openTerminal = useAgentStore((s) => s.openTerminal);
   const openClaudeTerminal = useAgentStore((s) => s.openClaudeTerminal);
@@ -67,14 +85,16 @@ export function ContextSummary({ agent }: Props) {
   const [copied, setCopied] = useState(false);
 
   const canSend = agent.status === "awaiting_input" || agent.status === "idle";
+  const supportsCliResume = agent.config.engine === "claude";
+  const supportsClaudeFiles = agent.config.engine === "claude";
 
   // React to global keyboard shortcut actions
   useEffect(() => {
     if (!pendingAction) return;
-    if (pendingAction === 'git') setShowGitMenu(true);
-    else if (pendingAction === 'terminal') setShowTermMenu(true);
-    else if (pendingAction === 'run') setShowRun(true);
-    else if (pendingAction === 'config') setShowConfig(true);
+    if (pendingAction === "git") setShowGitMenu(true);
+    else if (pendingAction === "terminal") setShowTermMenu(true);
+    else if (pendingAction === "run") setShowRun(true);
+    else if (pendingAction === "config") setShowConfig(true);
     clearPendingAction();
   }, [pendingAction, clearPendingAction]);
 
@@ -90,9 +110,15 @@ export function ContextSummary({ agent }: Props) {
         if (textParts.length > 0) {
           lines.push(`## Assistant\n\n${textParts.join("\n\n")}\n`);
         }
-        const toolUses = msg.message.content.filter((b) => b.type === "tool_use");
+        const toolUses = msg.message.content.filter(
+          (b) => b.type === "tool_use",
+        );
         for (const t of toolUses) {
-          const tu = t as { type: "tool_use"; name: string; input: Record<string, unknown> };
+          const tu = t as {
+            type: "tool_use";
+            name: string;
+            input: Record<string, unknown>;
+          };
           lines.push(`> Tool: \`${tu.name}\`\n`);
         }
       } else if (msg.type === "result") {
@@ -186,13 +212,18 @@ export function ContextSummary({ agent }: Props) {
           >
             {displayName}
           </span>
-          <span style={pillStyle}>
-            {STATUS_LABELS[agent.status]}
-          </span>
+          <span style={pillStyle}>{STATUS_LABELS[agent.status]}</span>
         </div>
 
         {/* Info pills */}
-        <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+            flexWrap: "wrap",
+          }}
+        >
           <span style={pillStyle}>
             <Zap size={11} color={theme.sapphire} />
             {ENGINE_LABELS[agent.config.engine] || "Claude Code"}
@@ -200,7 +231,13 @@ export function ContextSummary({ agent }: Props) {
 
           <span style={pillStyle}>
             <Folder size={11} color={theme.rosewater} />
-            <span style={{ maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis" }}>
+            <span
+              style={{
+                maxWidth: 180,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+              }}
+            >
               {agent.config.cwd}
             </span>
           </span>
@@ -215,13 +252,15 @@ export function ContextSummary({ agent }: Props) {
 
         {/* Action buttons */}
         <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
-          <IconButton
-            icon={<FileText size={12} />}
-            tooltip="CLAUDE.md"
-            onClick={() => setShowClaudeMd(true)}
-            hoverColor={theme.lavender}
-            style={{ borderRadius: theme.borderRadiusSm }}
-          />
+          {supportsClaudeFiles && (
+            <IconButton
+              icon={<FileText size={12} />}
+              tooltip="CLAUDE.md"
+              onClick={() => setShowClaudeMd(true)}
+              hoverColor={theme.lavender}
+              style={{ borderRadius: theme.borderRadiusSm }}
+            />
+          )}
           <IconButton
             icon={<Settings size={12} />}
             tooltip="Agent Config"
@@ -242,7 +281,15 @@ export function ContextSummary({ agent }: Props) {
                 icon={
                   <>
                     <TerminalSquare size={12} />
-                    <span style={{ fontSize: 11, fontWeight: 700, fontFamily: theme.fontHeading }}>Terminal</span>
+                    <span
+                      style={{
+                        fontSize: 11,
+                        fontWeight: 700,
+                        fontFamily: theme.fontHeading,
+                      }}
+                    >
+                      Terminal
+                    </span>
                     <ChevronDown size={9} />
                   </>
                 }
@@ -259,17 +306,25 @@ export function ContextSummary({ agent }: Props) {
             align="end"
           >
             <DropdownMenuItem
-              onClick={() => { setShowTermMenu(false); openTerminal(agent.config.cwd); }}
+              onClick={() => {
+                setShowTermMenu(false);
+                openTerminal(agent.config.cwd);
+              }}
               icon={<TerminalSquare size={12} />}
             >
               Open Terminal
             </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => { setShowTermMenu(false); openClaudeTerminal(agent.config.cwd, agent.session_id); }}
-              icon={<TerminalSquare size={12} />}
-            >
-              Open Claude CLI
-            </DropdownMenuItem>
+            {supportsCliResume && (
+              <DropdownMenuItem
+                onClick={() => {
+                  setShowTermMenu(false);
+                  openClaudeTerminal(agent.config.cwd, agent.session_id);
+                }}
+                icon={<TerminalSquare size={12} />}
+              >
+                Open Claude CLI
+              </DropdownMenuItem>
+            )}
           </DropdownMenu>
 
           <DropdownMenu
@@ -278,7 +333,15 @@ export function ContextSummary({ agent }: Props) {
                 icon={
                   <>
                     <GitBranch size={12} />
-                    <span style={{ fontSize: 11, fontWeight: 700, fontFamily: theme.fontHeading }}>Git</span>
+                    <span
+                      style={{
+                        fontSize: 11,
+                        fontWeight: 700,
+                        fontFamily: theme.fontHeading,
+                      }}
+                    >
+                      Git
+                    </span>
                     <ChevronDown size={9} />
                   </>
                 }
@@ -296,7 +359,10 @@ export function ContextSummary({ agent }: Props) {
             align="end"
           >
             <DropdownMenuItem
-              onClick={() => { setShowGitMenu(false); setShowDiff(true); }}
+              onClick={() => {
+                setShowGitMenu(false);
+                setShowDiff(true);
+              }}
             >
               View diff
             </DropdownMenuItem>
@@ -314,13 +380,32 @@ export function ContextSummary({ agent }: Props) {
             icon={
               isRunning ? (
                 <>
-                  <Loader size={12} style={{ animation: "spin 1s linear infinite" }} />
-                  <span style={{ fontSize: 11, fontWeight: 700, fontFamily: theme.fontHeading }}>Running</span>
+                  <Loader
+                    size={12}
+                    style={{ animation: "spin 1s linear infinite" }}
+                  />
+                  <span
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 700,
+                      fontFamily: theme.fontHeading,
+                    }}
+                  >
+                    Running
+                  </span>
                 </>
               ) : (
                 <>
                   <Play size={12} />
-                  <span style={{ fontSize: 11, fontWeight: 700, fontFamily: theme.fontHeading }}>Run</span>
+                  <span
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 700,
+                      fontFamily: theme.fontHeading,
+                    }}
+                  >
+                    Run
+                  </span>
                 </>
               )
             }
@@ -347,10 +432,30 @@ export function ContextSummary({ agent }: Props) {
         />
       </div>
 
-      {showRun && <RunDialog cwd={agent.config.cwd} onClose={() => setShowRun(false)} />}
-      {showDiff && <DiffDialog cwd={agent.config.cwd} onClose={() => setShowDiff(false)} />}
-      {showClaudeMd && <ClaudeMdDialog open={showClaudeMd} onClose={() => setShowClaudeMd(false)} cwd={agent.config.cwd} />}
-      {showConfig && <AgentConfigDialog open={showConfig} onClose={() => setShowConfig(false)} agent={agent} />}
+      {showRun && (
+        <RunDialog
+          agentId={agent.id}
+          cwd={agent.config.cwd}
+          onClose={() => setShowRun(false)}
+        />
+      )}
+      {showDiff && (
+        <DiffDialog cwd={agent.config.cwd} onClose={() => setShowDiff(false)} />
+      )}
+      {supportsClaudeFiles && showClaudeMd && (
+        <ClaudeMdDialog
+          open={showClaudeMd}
+          onClose={() => setShowClaudeMd(false)}
+          cwd={agent.config.cwd}
+        />
+      )}
+      {showConfig && (
+        <AgentConfigDialog
+          open={showConfig}
+          onClose={() => setShowConfig(false)}
+          agent={agent}
+        />
+      )}
     </>
   );
 }

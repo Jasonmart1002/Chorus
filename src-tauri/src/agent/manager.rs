@@ -73,17 +73,51 @@ impl AgentManager {
     }
 
     pub fn update_status(&mut self, id: &str, status: AgentStatus) {
-        if let Some(agent) = self.agents.get_mut(id) {
-            agent.status = status;
+        let changed = match self.agents.get_mut(id) {
+            Some(agent) if agent.status != status => {
+                agent.status = status;
+                true
+            }
+            _ => false,
+        };
+
+        if changed {
+            let _ = self.save();
         }
     }
 
     #[allow(dead_code)]
     pub fn update_cost(&mut self, id: &str, cost: f64, turns: u32) {
-        if let Some(agent) = self.agents.get_mut(id) {
-            agent.cost_usd = cost;
-            agent.num_turns = turns;
+        let changed = match self.agents.get_mut(id) {
+            Some(agent) if agent.cost_usd != cost || agent.num_turns != turns => {
+                agent.cost_usd = cost;
+                agent.num_turns = turns;
+                true
+            }
+            _ => false,
+        };
+
+        if changed {
+            let _ = self.save();
         }
+    }
+
+    pub fn update_session_id(&mut self, id: &str, session_id: String) {
+        let changed = match self.agents.get_mut(id) {
+            Some(agent) if agent.session_id != session_id => {
+                agent.session_id = session_id;
+                true
+            }
+            _ => false,
+        };
+
+        if changed {
+            let _ = self.save();
+        }
+    }
+
+    pub fn remove_process(&mut self, id: &str) {
+        self.processes.remove(id);
     }
 
     pub fn remove_agent(&mut self, id: &str) {
@@ -124,8 +158,7 @@ impl AgentManager {
         if !path.exists() {
             return Ok(Vec::new());
         }
-        let content =
-            std::fs::read_to_string(&path).map_err(|e| format!("Read error: {}", e))?;
+        let content = std::fs::read_to_string(&path).map_err(|e| format!("Read error: {}", e))?;
         serde_json::from_str(&content).map_err(|e| format!("Parse error: {}", e))
     }
 
@@ -144,8 +177,8 @@ impl AgentManager {
             })
             .collect();
         let path = Self::agents_path();
-        let json = serde_json::to_string_pretty(&saved)
-            .map_err(|e| format!("Serialize error: {}", e))?;
+        let json =
+            serde_json::to_string_pretty(&saved).map_err(|e| format!("Serialize error: {}", e))?;
         let tmp_path = path.with_extension("json.tmp");
         std::fs::write(&tmp_path, json).map_err(|e| format!("Write error: {}", e))?;
         std::fs::rename(&tmp_path, &path).map_err(|e| format!("Rename error: {}", e))

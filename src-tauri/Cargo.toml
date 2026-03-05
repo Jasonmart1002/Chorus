@@ -2,7 +2,7 @@
 name = "chorus"
 version = "0.4.0"
 edition = "2021"
-description = "A native desktop app for orchestrating multiple AI coding agents (Claude, Codex, Gemini) in parallel"
+description = "A native desktop app for orchestrating multiple Claude Code agents in parallel"
 license = "MIT"
 repository = "https://github.com/Jasonmart1002/Chorus"
 

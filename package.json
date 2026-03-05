@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.4.0",
   "type": "module",
-  "description": "A native desktop app for orchestrating multiple AI coding agents (Claude, Codex, Gemini) in parallel",
+  "description": "A native desktop app for orchestrating multiple Claude Code agents in parallel",
   "author": "Jason Martinez",
   "license": "MIT",
   "homepage": "https://github.com/Jasonmart1002/Chorus",
@@ -14,11 +14,8 @@
   "keywords": [
     "claude",
     "claude-code",
-    "codex",
-    "gemini",
     "ai-agents",
     "multi-agent",
-    "multi-engine",
     "tauri",
     "desktop-app",
     "developer-tools"

@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { open } from "@tauri-apps/plugin-dialog";
 import { FolderOpen, Code2, Bug, BookOpen, Sparkles } from "lucide-react";
 import { useAgentStore } from "../store/agentStore";
 import { useThemeStore } from "../store/themeStore";
 import { DEFAULT_PERMISSION_MODE } from "../lib/constants";
 import { basename } from "../lib/platform";
+import type { EngineInfo } from "../types/agent";
 import { Dialog } from "./ui/Dialog";
 import { Button } from "./ui/Button";
 import { Input } from "./ui/Input";
@@ -15,7 +16,11 @@ interface Props {
 }
 
 interface Template {
-  icon: React.ComponentType<{ size?: number; color?: string; strokeWidth?: number }>;
+  icon: React.ComponentType<{
+    size?: number;
+    color?: string;
+    strokeWidth?: number;
+  }>;
   name: string;
   color: string;
   prompt: string;
@@ -26,25 +31,29 @@ const TEMPLATES: Template[] = [
     icon: Code2,
     name: "Code Reviewer",
     color: "sapphire",
-    prompt: "You are a code reviewer. Review code changes for bugs, style issues, security problems, and suggest improvements. Be thorough but constructive.",
+    prompt:
+      "You are a code reviewer. Review code changes for bugs, style issues, security problems, and suggest improvements. Be thorough but constructive.",
   },
   {
     icon: Bug,
     name: "Bug Fixer",
     color: "peach",
-    prompt: "You are a debugging specialist. Help find and fix bugs efficiently. Start by understanding the symptoms, then investigate root causes systematically.",
+    prompt:
+      "You are a debugging specialist. Help find and fix bugs efficiently. Start by understanding the symptoms, then investigate root causes systematically.",
   },
   {
     icon: BookOpen,
     name: "Doc Writer",
     color: "mint",
-    prompt: "You are a documentation specialist. Write clear, concise documentation for codebases. Focus on architecture overviews, API docs, and inline comments.",
+    prompt:
+      "You are a documentation specialist. Write clear, concise documentation for codebases. Focus on architecture overviews, API docs, and inline comments.",
   },
   {
     icon: Sparkles,
     name: "Refactor Pro",
     color: "mauve",
-    prompt: "You are a refactoring expert. Improve code quality, reduce duplication, and modernize patterns while maintaining existing behavior. Always run tests after changes.",
+    prompt:
+      "You are a refactoring expert. Improve code quality, reduce duplication, and modernize patterns while maintaining existing behavior. Always run tests after changes.",
   },
 ];
 
@@ -57,6 +66,7 @@ const MODELS = [
 
 export function NewAgentDialog({ onClose }: Props) {
   const createAgent = useAgentStore((s) => s.createAgent);
+  const detectEngines = useAgentStore((s) => s.detectEngines);
   const theme = useThemeStore((s) => s.current);
   const [name, setName] = useState("");
   const [cwd, setCwd] = useState("");
@@ -65,6 +75,17 @@ export function NewAgentDialog({ onClose }: Props) {
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedTemplate, setSelectedTemplate] = useState<number | null>(null);
+  const [enginesLoaded, setEnginesLoaded] = useState(false);
+  const [claudeInfo, setClaudeInfo] = useState<EngineInfo | null>(null);
+
+  useEffect(() => {
+    detectEngines()
+      .then((engines) => {
+        setClaudeInfo(engines.find((info) => info.engine === "claude") || null);
+      })
+      .catch(() => {})
+      .finally(() => setEnginesLoaded(true));
+  }, [detectEngines]);
 
   const handlePickDir = async () => {
     const selected = await open({ directory: true, multiple: false });
@@ -96,7 +117,7 @@ export function NewAgentDialog({ onClose }: Props) {
         cwd.trim(),
         model || undefined,
         permMode,
-        "claude"
+        "claude",
       );
       // If a template was selected, send the system prompt as initial message
       if (selectedTemplate !== null) {
@@ -116,7 +137,8 @@ export function NewAgentDialog({ onClose }: Props) {
     }
   };
 
-  const isReady = !!(name.trim() && cwd.trim() && !creating);
+  const claudeAvailable = claudeInfo?.available ?? !enginesLoaded;
+  const isReady = !!(name.trim() && cwd.trim() && !creating && claudeAvailable);
 
   const labelStyle: React.CSSProperties = {
     fontSize: 12,
@@ -153,10 +175,14 @@ export function NewAgentDialog({ onClose }: Props) {
         {/* Template presets */}
         <div>
           <span style={labelStyle}>Start from a template</span>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+          <div
+            style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}
+          >
             {TEMPLATES.map((tmpl, i) => {
               const sel = selectedTemplate === i;
-              const tColor = (theme as unknown as Record<string, string>)[tmpl.color] || theme.textMuted;
+              const tColor =
+                (theme as unknown as Record<string, string>)[tmpl.color] ||
+                theme.textMuted;
               const TIcon = tmpl.icon;
               return (
                 <button
@@ -169,7 +195,9 @@ export function NewAgentDialog({ onClose }: Props) {
                     gap: 10,
                     padding: "10px 12px",
                     background: sel ? `${tColor}18` : theme.bgBase,
-                    border: sel ? `2px solid ${tColor}` : `2px solid ${theme.borderStrong}`,
+                    border: sel
+                      ? `2px solid ${tColor}`
+                      : `2px solid ${theme.borderStrong}`,
                     borderRadius: theme.borderRadiusSm,
                     cursor: "pointer",
                     transition: `all 0.15s ${theme.easeSpring}`,
@@ -178,11 +206,27 @@ export function NewAgentDialog({ onClose }: Props) {
                   }}
                 >
                   <TIcon size={16} color={tColor} strokeWidth={2.5} />
-                  <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
-                    <span style={{ fontSize: 12, fontWeight: 700, fontFamily: theme.fontHeading, color: sel ? tColor : theme.textPrimary }}>
+                  <div
+                    style={{ display: "flex", flexDirection: "column", gap: 1 }}
+                  >
+                    <span
+                      style={{
+                        fontSize: 12,
+                        fontWeight: 700,
+                        fontFamily: theme.fontHeading,
+                        color: sel ? tColor : theme.textPrimary,
+                      }}
+                    >
                       {tmpl.name}
                     </span>
-                    <span style={{ fontSize: 9, fontFamily: theme.fontBody, color: theme.textMuted, lineHeight: 1.3 }}>
+                    <span
+                      style={{
+                        fontSize: 9,
+                        fontFamily: theme.fontBody,
+                        color: theme.textMuted,
+                        lineHeight: 1.3,
+                      }}
+                    >
                       {tmpl.prompt.slice(0, 50)}...
                     </span>
                   </div>
@@ -223,8 +267,43 @@ export function NewAgentDialog({ onClose }: Props) {
           </div>
         </label>
 
-        {/* Model selector */}
         <label style={{ display: "block" }}>
+          <span style={labelStyle}>Engine</span>
+          <div
+            style={{
+              marginBottom: 10,
+              padding: "10px 12px",
+              background: `${theme.sapphire}14`,
+              border: `2px solid ${theme.sapphire}44`,
+              borderRadius: theme.borderRadiusSm,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 8,
+            }}
+          >
+            <span
+              style={{
+                fontSize: 12,
+                fontWeight: 700,
+                fontFamily: theme.fontHeading,
+                color: theme.textPrimary,
+              }}
+            >
+              Claude Code
+            </span>
+            <span
+              style={{
+                fontSize: 10,
+                fontFamily: theme.fontBody,
+                color: claudeAvailable ? theme.textMuted : theme.peach,
+                fontWeight: 600,
+              }}
+            >
+              {claudeAvailable ? "Detected" : "Not detected"}
+            </span>
+          </div>
+
           <span style={labelStyle}>Model</span>
           <div style={{ display: "flex", gap: 6 }}>
             {MODELS.map((m) => {
@@ -295,7 +374,9 @@ export function NewAgentDialog({ onClose }: Props) {
               outline: "none",
             }}
           >
-            <option value="bypassPermissions">Bypass Permissions (auto-approve all)</option>
+            <option value="bypassPermissions">
+              Bypass Permissions (auto-approve all)
+            </option>
             <option value="default">Default (ask for approval)</option>
           </select>
         </label>
@@ -314,6 +395,22 @@ export function NewAgentDialog({ onClose }: Props) {
             }}
           >
             {error}
+          </div>
+        )}
+
+        {!claudeAvailable && enginesLoaded && (
+          <div
+            style={{
+              padding: "8px 12px",
+              background: theme.goldLight,
+              border: `2px solid ${theme.gold}`,
+              borderRadius: theme.borderRadiusSm,
+              color: theme.textPrimary,
+              fontSize: 12,
+              fontFamily: theme.fontBody,
+            }}
+          >
+            Claude Code is not installed on this machine.
           </div>
         )}
       </div>

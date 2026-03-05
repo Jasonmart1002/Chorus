@@ -80,13 +80,24 @@ jobs:
           tagName: ${{ github.ref_name }}
           releaseName: "Chorus ${{ github.ref_name }}"
           releaseBody: |
+            Chorus is a desktop workspace for local coding agents.
+
             See the [full changelog](https://github.com/${{ github.repository }}/commits/${{ github.ref_name }}).
 
-            ## Install
-            - **macOS (Apple Silicon)**: Download the `.dmg` file for `aarch64`
-            - **macOS (Intel)**: Download the `.dmg` file for `x64`
-            - **Windows**: Download the `.msi` or `.exe` installer
-            - **Linux**: Download the `.deb` or `.AppImage`
+            ## Before You Launch
+            Install and authenticate the Claude Code CLI:
+            - `npm install -g @anthropic-ai/claude-code`
+
+            ## Assets
+            - **macOS (Apple Silicon)**: download the `aarch64` `.dmg`
+            - **macOS (Intel)**: download the `x64` `.dmg`
+            - **Windows**: download the `.msi` or `.exe`
+            - **Linux**: download the `.deb` or `.AppImage`
+
+            ## Notes
+            - Builds are currently unsigned open-source binaries, so first-launch OS warnings may appear.
+            - Chorus currently ships as a Claude Code app.
+            - Claude integrations include `CLAUDE.md`, MCP, hooks, skills, and CLI resume handoff.
           releaseDraft: true
           prerelease: false
           args: --target ${{ matrix.target }}

@@ -37,11 +37,7 @@ pub trait CliAdapter: Send + Sync {
     fn resolve_binary(&self) -> Result<PathBuf, String>;
 
     /// Build the command-line arguments for spawning the CLI process
-    fn build_args(
-        &self,
-        session_id: &str,
-        config: &AgentConfig,
-    ) -> Vec<String>;
+    fn build_args(&self, session_id: &str, config: &AgentConfig) -> Vec<String>;
 
     /// Parse a single line of stdout. Returns events for the frontend.
     fn parse_stdout_line(&self, line: &str) -> ParsedEvent;
@@ -73,7 +69,7 @@ pub fn create_adapter(engine: &Engine) -> Box<dyn CliAdapter> {
 
 /// Check which CLI engines are available on this system
 pub fn detect_engines() -> Vec<EngineInfo> {
-    let engines = [Engine::Claude, Engine::Codex, Engine::Gemini];
+    let engines = [Engine::Claude];
     engines
         .iter()
         .map(|e| {

@@ -15,8 +15,14 @@ import {
   FolderSearch,
   ListTodo,
   Layers,
+  RotateCcw,
 } from "lucide-react";
-import type { SDKMessage, ResultMessage, ContentBlock, ToolUseBlock } from "../../types/messages";
+import type {
+  SDKMessage,
+  ResultMessage,
+  ToolResultBlock,
+  ToolUseBlock,
+} from "../../types/messages";
 import { useAgentStore } from "../../store/agentStore";
 import { useThemeStore } from "../../store/themeStore";
 import { Button } from "../ui/Button";
@@ -68,12 +74,14 @@ interface Props {
 type RenderItem =
   | { kind: "text"; text: string; key: string }
   | { kind: "tool_use"; block: ToolUseBlock; key: string }
+  | { kind: "tool_result"; block: ToolResultBlock; key: string }
   | { kind: "tool_group"; name: string; blocks: ToolUseBlock[]; key: string }
   | { kind: "activity_group"; blocks: ToolUseBlock[]; key: string }
   | { kind: "result"; message: ResultMessage; key: string }
   | { kind: "user_prompt"; text: string; key: string }
   | { kind: "system_init"; key: string }
   | { kind: "context_compact"; key: string }
+  | { kind: "fresh_session"; key: string }
   | { kind: "ask_user"; block: ToolUseBlock; key: string }
   | { kind: "plan"; block: ToolUseBlock; key: string };
 
@@ -116,6 +124,8 @@ function flattenMessages(messages: SDKMessage[]): RenderItem[] {
           items.push({ kind: "system_init", key: `si-${seq++}` });
         } else if (isCompactMessage(msg)) {
           items.push({ kind: "context_compact", key: `cc-${seq++}` });
+        } else if (msg.subtype === "fresh_session") {
+          items.push({ kind: "fresh_session", key: `fs-${seq++}` });
         }
         break;
       case "assistant": {
@@ -133,6 +143,12 @@ function flattenMessages(messages: SDKMessage[]): RenderItem[] {
               } else {
                 items.push({ kind: "tool_use", block: tb, key: `tu-${tb.id}` });
               }
+            } else if (block.type === "tool_result") {
+              items.push({
+                kind: "tool_result",
+                block: block as ToolResultBlock,
+                key: `tr-${(block as ToolResultBlock).tool_use_id}-${seq++}`,
+              });
             }
           }
         }
@@ -276,10 +292,14 @@ function RenderItemView({ item, agentId }: { item: RenderItem; agentId: string }
       return <SystemInitPill />;
     case "context_compact":
       return <ContextCompactPill />;
+    case "fresh_session":
+      return <FreshSessionPill />;
     case "text":
       return <AssistantText text={item.text} />;
     case "tool_use":
       return <ToolUseView block={item.block} />;
+    case "tool_result":
+      return <ToolResultView block={item.block} />;
     case "tool_group":
       return <ToolGroupView name={item.name} blocks={item.blocks} />;
     case "activity_group":
@@ -452,6 +472,39 @@ function ContextCompactPill() {
   );
 }
 
+function FreshSessionPill() {
+  const theme = useThemeStore((s) => s.current);
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        justifyContent: "center",
+        padding: "6px 0",
+      }}
+    >
+      <div
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 6,
+          padding: "5px 14px",
+          borderRadius: theme.borderRadiusFull,
+          background: theme.goldLight,
+          border: `1px solid ${theme.gold}55`,
+          fontSize: 11,
+          color: theme.gold,
+          fontFamily: theme.fontBody,
+          fontWeight: 700,
+        }}
+      >
+        <RotateCcw size={11} strokeWidth={2.5} />
+        <span>New session started for this engine</span>
+      </div>
+    </div>
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Assistant Text — cozy full-width markdown
 // ---------------------------------------------------------------------------
@@ -522,6 +575,36 @@ function ResultView({ message }: { message: ResultMessage }) {
       >
         {isError ? "Error" : "Turn complete \u2713"}
       </span>
+    </div>
+  );
+}
+
+function ToolResultView({ block }: { block: ToolResultBlock }) {
+  const theme = useThemeStore((s) => s.current);
+
+  return (
+    <div
+      style={{
+        padding: "10px 12px",
+        borderRadius: theme.borderRadius,
+        background: theme.bgCard,
+        border: `1.5px solid ${theme.borderColor}`,
+      }}
+    >
+      <div
+        style={{
+          fontSize: 10,
+          fontWeight: 700,
+          fontFamily: theme.fontHeading,
+          color: theme.textMuted,
+          marginBottom: 6,
+          letterSpacing: "0.03em",
+          textTransform: "uppercase",
+        }}
+      >
+        Tool Result
+      </div>
+      <MarkdownRenderer content={block.content || ""} />
     </div>
   );
 }

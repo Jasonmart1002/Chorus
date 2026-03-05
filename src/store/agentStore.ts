@@ -14,6 +14,7 @@ import { toast } from "./toastStore";
 export type ViewMode = "agents" | "skills" | "automations" | "mcp" | "hooks";
 
 export interface CommandState {
+  runId: string;
   cwd: string;
   command: string;
   running: boolean;
@@ -67,12 +68,13 @@ interface AgentStore {
   setVibeMode: (on: boolean) => void;
   vibeSkip: () => void;
   startCommand: (
+    agentId: string,
     cwd: string,
     command: string,
     envVars?: Record<string, string>
   ) => void;
-  killRunningCommand: (cwd: string) => Promise<void>;
-  dismissCommandOutput: (cwd: string) => void;
+  killRunningCommand: (agentId: string) => Promise<void>;
+  dismissCommandOutput: (agentId: string) => void;
   openTerminal: (cwd: string) => Promise<void>;
   openClaudeTerminal: (cwd: string, sessionId: string) => Promise<void>;
 }
@@ -108,6 +110,16 @@ function scheduleSaveMessages(agentId: string) {
       }
     }
   }, 2000);
+}
+
+function findCommandOwner(
+  commandStates: Record<string, CommandState>,
+  runId: string
+): string | null {
+  for (const [agentId, state] of Object.entries(commandStates)) {
+    if (state.runId === runId) return agentId;
+  }
+  return null;
 }
 
 export const useAgentStore = create<AgentStore>((set, get) => ({
@@ -211,24 +223,26 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
     });
 
     // Listen for streaming command output
-    await listen<{ cwd: string; line: string; stream: string }>("command-output", (event) => {
-      const { cwd, line } = event.payload;
+    await listen<{ run_id: string; cwd: string; line: string; stream: string }>("command-output", (event) => {
+      const { run_id, line } = event.payload;
       set((state) => {
-        const cs = state.commandStates[cwd];
-        if (!cs) return state;
+        const owner = findCommandOwner(state.commandStates, run_id);
+        if (!owner) return state;
+        const cs = state.commandStates[owner];
         return {
           commandStates: {
             ...state.commandStates,
-            [cwd]: { ...cs, lines: [...cs.lines, line] },
+            [owner]: { ...cs, lines: [...cs.lines, line] },
           },
         };
       });
     });
 
     // Listen for command completion (only toast for tracked commands, not diffs)
-    await listen<{ cwd: string; exit_code: number | null }>("command-done", (event) => {
-      const { cwd, exit_code } = event.payload;
-      const tracked = get().commandStates[cwd];
+    await listen<{ run_id: string; cwd: string; exit_code: number | null }>("command-done", (event) => {
+      const { run_id, exit_code } = event.payload;
+      const owner = findCommandOwner(get().commandStates, run_id);
+      const tracked = owner ? get().commandStates[owner] : undefined;
       if (tracked) {
         if (exit_code === 0) {
           toast.success("Command completed");
@@ -237,12 +251,13 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
         }
       }
       set((state) => {
-        const cs = state.commandStates[cwd];
-        if (!cs) return state;
+        const ownerId = findCommandOwner(state.commandStates, run_id);
+        if (!ownerId) return state;
+        const cs = state.commandStates[ownerId];
         return {
           commandStates: {
             ...state.commandStates,
-            [cwd]: { ...cs, running: false, exitCode: exit_code },
+            [ownerId]: { ...cs, running: false, exitCode: exit_code },
           },
         };
       });
@@ -347,10 +362,12 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
       const { [agentId]: _removedAttn, ...remainingAttention } = state.attentionSet;
       const { [agentId]: _removedTs, ...remainingTimestamps } = state.attentionTimestamps;
       const { [agentId]: _removedLoaded, ...remainingLoaded } = state.messagesLoaded;
+      const { [agentId]: _removedCommand, ...remainingCommands } = state.commandStates;
       const updates: Partial<AgentStore> = {
         agents: remainingAgents,
         messages: remainingMessages,
         messagesLoaded: remainingLoaded,
+        commandStates: remainingCommands,
         attentionSet: remainingAttention,
         attentionTimestamps: remainingTimestamps,
         selectedAgentId:
@@ -370,18 +387,24 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
 
   restoreAgent: async (agentId) => {
     try {
-      await invoke("restore_agent", { agentId });
+      const result = await invoke<{ session_id: string; resumed: boolean }>("restore_agent", {
+        agentId,
+      });
       set((state) => {
         const agent = state.agents[agentId];
         if (!agent) return state;
         return {
           agents: {
             ...state.agents,
-            [agentId]: { ...agent, status: "idle" as AgentStatus },
+            [agentId]: {
+              ...agent,
+              status: "idle" as AgentStatus,
+              session_id: result.session_id,
+            },
           },
         };
       });
-      toast.success("Agent restarted");
+      toast.success(result.resumed ? "Agent restarted" : "Agent restarted with a fresh session");
     } catch (err) {
       toast.error(`Failed to restart: ${String(err)}`);
       throw err;
@@ -461,12 +484,20 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
     });
   },
 
-  startCommand: (cwd, command, envVars) => {
+  startCommand: (agentId, cwd, command, envVars) => {
+    const runId = crypto.randomUUID();
     set((state) => ({
       savedCommands: { ...state.savedCommands, [cwd]: command },
       commandStates: {
         ...state.commandStates,
-        [cwd]: { cwd, command, running: true, lines: [], exitCode: undefined },
+        [agentId]: {
+          runId,
+          cwd,
+          command,
+          running: true,
+          lines: [],
+          exitCode: undefined,
+        },
       },
     }));
 
@@ -474,15 +505,16 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
       cwd,
       command,
       envVars: envVars || null,
+      runId,
     }).catch((err) => {
       toast.error(`Command failed: ${String(err)}`);
       set((state) => {
-        const cs = state.commandStates[cwd];
+        const cs = state.commandStates[agentId];
         if (!cs) return state;
         return {
           commandStates: {
             ...state.commandStates,
-            [cwd]: {
+            [agentId]: {
               ...cs,
               running: false,
               lines: [...cs.lines, `Error: ${String(err)}`],
@@ -494,13 +526,15 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
     });
   },
 
-  killRunningCommand: async (cwd) => {
-    await invoke("kill_running_command", { cwd });
+  killRunningCommand: async (agentId) => {
+    const runId = get().commandStates[agentId]?.runId;
+    if (!runId) return;
+    await invoke("kill_running_command", { runId });
   },
 
-  dismissCommandOutput: (cwd) => {
+  dismissCommandOutput: (agentId) => {
     set((state) => {
-      const { [cwd]: _removed, ...rest } = state.commandStates;
+      const { [agentId]: _removed, ...rest } = state.commandStates;
       return { commandStates: rest };
     });
   },

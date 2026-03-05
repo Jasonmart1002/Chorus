@@ -39,7 +39,9 @@ impl GeminiAdapter {
             {
                 let npm_root = String::from_utf8_lossy(&output.stdout).trim().to_string();
                 if !npm_root.is_empty() {
-                    let npm_bin = PathBuf::from(&npm_root).parent().map(|p| p.join("bin/gemini"));
+                    let npm_bin = PathBuf::from(&npm_root)
+                        .parent()
+                        .map(|p| p.join("bin/gemini"));
                     if let Some(p) = npm_bin {
                         if p.exists() {
                             return Ok(p);
@@ -81,15 +83,8 @@ impl CliAdapter for GeminiAdapter {
         Self::find_binary()
     }
 
-    fn build_args(
-        &self,
-        _session_id: &str,
-        config: &AgentConfig,
-    ) -> Vec<String> {
-        let mut args = vec![
-            "--output-format".to_string(),
-            "stream-json".to_string(),
-        ];
+    fn build_args(&self, _session_id: &str, config: &AgentConfig) -> Vec<String> {
+        let mut args = vec!["--output-format".to_string(), "stream-json".to_string()];
 
         if let Some(m) = &config.model {
             args.push("--model".to_string());
@@ -176,10 +171,7 @@ impl CliAdapter for GeminiAdapter {
                         .or_else(|| json.get("text"))
                         .and_then(|v| v.as_str())
                         .unwrap_or("");
-                    let is_error = json
-                        .get("error")
-                        .and_then(|v| v.as_bool())
-                        .unwrap_or(false);
+                    let is_error = json.get("error").and_then(|v| v.as_bool()).unwrap_or(false);
                     let normalized = serde_json::json!({
                         "type": "result",
                         "subtype": if is_error { "error_tool_use" } else { "success" },

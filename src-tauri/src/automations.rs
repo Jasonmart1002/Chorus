@@ -93,10 +93,7 @@ pub struct AutomationsState {
 
 impl AutomationsState {
     pub fn load() -> Self {
-        let automations = match Self::read_file() {
-            Ok(list) => list,
-            Err(_) => Vec::new(),
-        };
+        let automations = Self::read_file().unwrap_or_default();
         Self { automations }
     }
 
@@ -120,8 +117,7 @@ impl AutomationsState {
         if !path.exists() {
             return Ok(Vec::new());
         }
-        let content =
-            std::fs::read_to_string(&path).map_err(|e| format!("Read error: {}", e))?;
+        let content = std::fs::read_to_string(&path).map_err(|e| format!("Read error: {}", e))?;
         serde_json::from_str(&content).map_err(|e| format!("Parse error: {}", e))
     }
 
@@ -197,9 +193,7 @@ pub fn compute_next_run(schedule: &AutomationSchedule) -> Option<String> {
         }
         ScheduleFrequency::Daily => {
             let (h, m) = parse_time(&schedule.time)?;
-            let today_target = now
-                .date_naive()
-                .and_hms_opt(h, m, 0)?;
+            let today_target = now.date_naive().and_hms_opt(h, m, 0)?;
             let today_target = Local.from_local_datetime(&today_target).earliest()?;
             if today_target > now {
                 Some(today_target.to_rfc3339())
@@ -220,7 +214,10 @@ pub fn compute_next_run(schedule: &AutomationSchedule) -> Option<String> {
             for offset in 0..8 {
                 let candidate_date = (now + chrono::Duration::days(offset)).date_naive();
                 let candidate_weekday = candidate_date.weekday();
-                let matches = schedule.days.iter().any(|d| d.to_chrono() == candidate_weekday);
+                let matches = schedule
+                    .days
+                    .iter()
+                    .any(|d| d.to_chrono() == candidate_weekday);
                 if matches {
                     let candidate_dt = candidate_date.and_time(target_time);
                     let candidate = Local.from_local_datetime(&candidate_dt).earliest()?;
@@ -244,7 +241,7 @@ pub fn compute_next_run(schedule: &AutomationSchedule) -> Option<String> {
             for offset in 0..62 {
                 let candidate_date = (now + chrono::Duration::days(offset)).date_naive();
                 let day_of_month = candidate_date.day();
-                let matches = schedule.dates.iter().any(|&d| d == day_of_month);
+                let matches = schedule.dates.contains(&day_of_month);
                 if matches {
                     let candidate_dt = candidate_date.and_time(target_time);
                     let candidate = Local.from_local_datetime(&candidate_dt).earliest()?;
@@ -272,6 +269,7 @@ pub struct AutomationFired {
 
 pub async fn tick(
     auto_state: &AutomationsStateHandle,
+    running_autos: &RunningAutomationsHandle,
     manager: &Arc<Mutex<AgentManager>>,
     app: &tauri::AppHandle,
 ) {
@@ -291,7 +289,9 @@ pub async fn tick(
                     return false;
                 }
                 match &a.next_run_at {
-                    Some(next) => next.as_str() <= now_str.as_str(),
+                    Some(next) => chrono::DateTime::parse_from_rfc3339(next)
+                        .map(|next| next <= now.fixed_offset())
+                        .unwrap_or(false),
                     None => false,
                 }
             })
@@ -300,35 +300,23 @@ pub async fn tick(
     };
 
     for automation in &due {
-        let result = fire_automation(automation, manager, app).await;
-        let (status, agent_id) = match &result {
-            Ok(id) => ("success", id.clone()),
-            Err(e) => {
-                eprintln!("Automation '{}' failed: {}", automation.name, e);
-                ("error", String::new())
-            }
-        };
-
-        // Update state
-        {
+        let result =
+            start_automation_run(automation, auto_state, running_autos, manager, app).await;
+        if let Err(e) = result {
+            eprintln!("Automation '{}' failed: {}", automation.name, e);
             let mut state = auto_state.lock().await;
             if let Some(a) = state.automations.iter_mut().find(|a| a.id == automation.id) {
-                a.last_run_at = Some(now_str.clone());
-                a.last_run_status = Some(status.to_string());
-                a.run_count += 1;
-                a.next_run_at = compute_next_run(&a.schedule);
+                if e == "Automation is already running" {
+                    a.next_run_at = compute_next_run(&a.schedule);
+                } else {
+                    a.last_run_at = Some(now_str.clone());
+                    a.last_run_status = Some("error".to_string());
+                    a.run_count += 1;
+                    a.next_run_at = compute_next_run(&a.schedule);
+                }
                 let _ = state.save();
             }
         }
-
-        let _ = app.emit(
-            "automation-fired",
-            AutomationFired {
-                automation_id: automation.id.clone(),
-                automation_name: automation.name.clone(),
-                agent_id,
-            },
-        );
     }
 }
 
@@ -352,6 +340,19 @@ async fn fire_automation(
             .get(agent_id)
             .ok_or_else(|| format!("Agent {} not found", agent_id))?;
         process.send(&automation.prompt, &engine).await?;
+        drop(mgr);
+
+        {
+            let mut mgr = manager.lock().await;
+            mgr.update_status(agent_id, AgentStatus::Working);
+        }
+        let _ = app.emit(
+            "agent-status-changed",
+            crate::agent::process::StatusChange {
+                agent_id: agent_id.clone(),
+                status: AgentStatus::Working,
+            },
+        );
         return Ok(agent_id.clone());
     }
 
@@ -398,6 +399,7 @@ async fn fire_automation(
         cwd,
         session_id.clone(),
         &config,
+        manager.clone(),
         app.clone(),
     )?;
 
@@ -415,6 +417,100 @@ async fn fire_automation(
             process.send(&automation.prompt, &engine).await?;
         }
     }
+
+    {
+        let mut mgr = manager.lock().await;
+        mgr.update_status(&agent_id, AgentStatus::Working);
+    }
+    let _ = app.emit(
+        "agent-status-changed",
+        crate::agent::process::StatusChange {
+            agent_id: agent_id.clone(),
+            status: AgentStatus::Working,
+        },
+    );
+
+    Ok(agent_id)
+}
+
+async fn start_automation_run(
+    automation: &Automation,
+    auto_state: &AutomationsStateHandle,
+    running_autos: &RunningAutomationsHandle,
+    manager: &Arc<Mutex<AgentManager>>,
+    app: &tauri::AppHandle,
+) -> Result<String, String> {
+    {
+        let running = running_autos.lock().await;
+        if running.contains_key(&automation.id) {
+            return Err("Automation is already running".to_string());
+        }
+    }
+
+    let agent_id = fire_automation(automation, manager, app).await?;
+    let now = chrono::Local::now().to_rfc3339();
+
+    {
+        let mut running = running_autos.lock().await;
+        running.insert(
+            automation.id.clone(),
+            RunningAutomationInfo {
+                automation_id: automation.id.clone(),
+                automation_name: automation.name.clone(),
+                agent_id: agent_id.clone(),
+                started_at: now.clone(),
+            },
+        );
+    }
+
+    let _ = app.emit(
+        "automation-started",
+        AutomationStarted {
+            automation_id: automation.id.clone(),
+            automation_name: automation.name.clone(),
+            agent_id: agent_id.clone(),
+        },
+    );
+
+    {
+        let mut s = auto_state.lock().await;
+        if let Some(a) = s.automations.iter_mut().find(|a| a.id == automation.id) {
+            a.last_run_at = Some(now);
+            a.last_run_status = None;
+            a.run_count += 1;
+            a.next_run_at = compute_next_run(&a.schedule);
+            let _ = s.save();
+        }
+    }
+
+    let _ = app.emit(
+        "automation-fired",
+        AutomationFired {
+            automation_id: automation.id.clone(),
+            automation_name: automation.name.clone(),
+            agent_id: agent_id.clone(),
+        },
+    );
+
+    let running_handle = running_autos.clone();
+    let manager_handle = manager.clone();
+    let auto_state_handle = auto_state.clone();
+    let app_handle = app.clone();
+    let auto_id = automation.id.clone();
+    let auto_name = automation.name.clone();
+    let monitored_agent_id = agent_id.clone();
+    tauri::async_runtime::spawn(async move {
+        monitor_automation_agent(
+            auto_id,
+            auto_name,
+            monitored_agent_id,
+            running_handle,
+            manager_handle,
+            auto_state_handle,
+            app_handle,
+        )
+        .await;
+    });
 
     Ok(agent_id)
 }
@@ -465,6 +561,7 @@ pub async fn create_automation(
 }
 
 #[tauri::command]
+#[allow(clippy::too_many_arguments)]
 pub async fn update_automation(
     id: String,
     name: Option<String>,
@@ -499,6 +596,8 @@ pub async fn update_automation(
         automation.enabled = e;
         if e {
             automation.next_run_at = compute_next_run(&automation.schedule);
+        } else {
+            automation.next_run_at = None;
         }
     }
     if let Some(sp) = skip_permissions {
@@ -528,14 +627,6 @@ pub async fn run_automation_now(
     manager: tauri::State<'_, Arc<Mutex<AgentManager>>>,
     app: tauri::AppHandle,
 ) -> Result<String, String> {
-    // Check if already running
-    {
-        let running = running_autos.lock().await;
-        if running.contains_key(&id) {
-            return Err("Automation is already running".to_string());
-        }
-    }
-
     let automation = {
         let s = auto_state.lock().await;
         s.automations
@@ -545,72 +636,14 @@ pub async fn run_automation_now(
             .ok_or_else(|| format!("Automation {} not found", id))?
     };
 
-    let agent_id = fire_automation(&automation, manager.inner(), &app).await?;
-
-    // Track as running
-    let info = RunningAutomationInfo {
-        automation_id: id.clone(),
-        automation_name: automation.name.clone(),
-        agent_id: agent_id.clone(),
-        started_at: chrono::Local::now().to_rfc3339(),
-    };
-    {
-        let mut running = running_autos.lock().await;
-        running.insert(id.clone(), info);
-    }
-
-    // Emit started event
-    let _ = app.emit(
-        "automation-started",
-        AutomationStarted {
-            automation_id: id.clone(),
-            automation_name: automation.name.clone(),
-            agent_id: agent_id.clone(),
-        },
-    );
-
-    // Update run stats
-    {
-        let mut s = auto_state.lock().await;
-        if let Some(a) = s.automations.iter_mut().find(|a| a.id == id) {
-            a.last_run_at = Some(chrono::Local::now().to_rfc3339());
-            a.last_run_status = Some("success".to_string());
-            a.run_count += 1;
-            let _ = s.save();
-        }
-    }
-
-    let _ = app.emit(
-        "automation-fired",
-        AutomationFired {
-            automation_id: automation.id.clone(),
-            automation_name: automation.name.clone(),
-            agent_id: agent_id.clone(),
-        },
-    );
-
-    // Spawn background task to monitor agent completion
-    let running_handle = running_autos.inner().clone();
-    let manager_handle = manager.inner().clone();
-    let auto_state_handle = auto_state.inner().clone();
-    let app_handle = app.clone();
-    let auto_id = id.clone();
-    let auto_name = automation.name.clone();
-    let monitored_agent_id = agent_id.clone();
-    tauri::async_runtime::spawn(async move {
-        monitor_automation_agent(
-            auto_id,
-            auto_name,
-            monitored_agent_id,
-            running_handle,
-            manager_handle,
-            auto_state_handle,
-            app_handle,
-        )
-        .await;
-    });
-
-    Ok(agent_id)
+    start_automation_run(
+        &automation,
+        auto_state.inner(),
+        running_autos.inner(),
+        manager.inner(),
+        &app,
+    )
+    .await
 }
 
 /// Monitors an agent spawned by an automation. When it enters idle/awaiting_input/exited
@@ -645,9 +678,7 @@ async fn monitor_automation_agent(
         // Check agent status
         let status = {
             let mgr = manager.lock().await;
-            mgr.agents
-                .get(&agent_id)
-                .map(|a| a.status.clone())
+            mgr.agents.get(&agent_id).map(|a| a.status.clone())
         };
 
         match status {

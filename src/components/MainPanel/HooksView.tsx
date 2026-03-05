@@ -50,7 +50,9 @@ export function HooksView() {
   const [showEditSkill, setShowEditSkill] = useState(false);
   const [editSkillPath, setEditSkillPath] = useState<string | undefined>();
   const [editSkillName, setEditSkillName] = useState<string | undefined>();
-  const [editSkillScope, setEditSkillScope] = useState<"user" | "project">("user");
+  const [editSkillScope, setEditSkillScope] = useState<"user" | "project">(
+    "user",
+  );
   const [home, setHome] = useState("");
 
   useEffect(() => {
@@ -59,19 +61,24 @@ export function HooksView() {
     homeDir().then(setHome);
   }, [cwd]);
 
-  const filteredHooks = hooks.filter(
-    (h) =>
-      !search ||
-      h.type.toLowerCase().includes(search.toLowerCase()) ||
-      (h.matcher || "").toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredHooks = hooks
+    .map((hook, index) => ({ hook, index }))
+    .filter(
+      ({ hook }) =>
+        !search ||
+        hook.type.toLowerCase().includes(search.toLowerCase()) ||
+        (hook.matcher || "").toLowerCase().includes(search.toLowerCase()),
+    );
 
   // Group hooks by event type
-  const grouped = new Map<HookEventName, { hook: HookEntry; index: number }[]>();
-  filteredHooks.forEach((h, i) => {
-    const arr = grouped.get(h.type) || [];
-    arr.push({ hook: h, index: i });
-    grouped.set(h.type, arr);
+  const grouped = new Map<
+    HookEventName,
+    { hook: HookEntry; index: number }[]
+  >();
+  filteredHooks.forEach(({ hook, index }) => {
+    const arr = grouped.get(hook.type) || [];
+    arr.push({ hook, index });
+    grouped.set(hook.type, arr);
   });
 
   const handleDeleteHook = (index: number) => {
@@ -90,7 +97,14 @@ export function HooksView() {
   };
 
   return (
-    <div style={{ height: "100%", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+    <div
+      style={{
+        height: "100%",
+        display: "flex",
+        flexDirection: "column",
+        overflow: "hidden",
+      }}
+    >
       {/* Header */}
       <div
         style={{
@@ -137,14 +151,18 @@ export function HooksView() {
               fontWeight: 500,
             }}
           >
-            {hooks.length} hook{hooks.length !== 1 ? "s" : ""} &middot; {skills.length} skill
+            {hooks.length} hook{hooks.length !== 1 ? "s" : ""} &middot;{" "}
+            {skills.length} skill
             {skills.length !== 1 ? "s" : ""}
           </div>
         </div>
         <IconButton
           icon={
             loading ? (
-              <Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} />
+              <Loader2
+                size={14}
+                style={{ animation: "spin 1s linear infinite" }}
+              />
             ) : (
               <RefreshCw size={14} />
             )
@@ -243,7 +261,8 @@ export function HooksView() {
                 border: `2px dashed ${theme.borderColor}`,
               }}
             >
-              No hooks configured. Hooks run commands or HTTP requests on Claude events.
+              No hooks configured. Hooks run commands or HTTP requests on Claude
+              events.
             </div>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
@@ -254,7 +273,10 @@ export function HooksView() {
                       fontSize: 10,
                       fontWeight: 700,
                       fontFamily: theme.fontHeading,
-                      color: (theme as unknown as Record<string, string>)[EVENT_COLORS[eventName]] || theme.textMuted,
+                      color:
+                        (theme as unknown as Record<string, string>)[
+                          EVENT_COLORS[eventName]
+                        ] || theme.textMuted,
                       letterSpacing: "0.04em",
                       marginBottom: 4,
                       marginTop: 4,
@@ -303,9 +325,11 @@ export function HooksView() {
                               whiteSpace: "nowrap",
                             }}
                           >
-                            {hook.hooks.map((a) =>
-                              a.type === "command" ? a.command : a.url
-                            ).join(", ")}
+                            {hook.hooks
+                              .map((a) =>
+                                a.type === "command" ? a.command : a.url,
+                              )
+                              .join(", ")}
                           </div>
                         </div>
                         <IconButton
@@ -386,8 +410,8 @@ export function HooksView() {
                 border: `2px dashed ${theme.borderColor}`,
               }}
             >
-              No custom skills found. Skills are .md files in ~/.claude/skills/ or
-              .claude/skills/.
+              No custom skills found. Skills are .md files in ~/.claude/skills/
+              or .claude/skills/.
             </div>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
@@ -444,8 +468,13 @@ export function HooksView() {
                         fontWeight: 700,
                         padding: "2px 8px",
                         background:
-                          skill.scope === "project" ? theme.teal + "22" : theme.lavender + "22",
-                        color: skill.scope === "project" ? theme.teal : theme.lavender,
+                          skill.scope === "project"
+                            ? theme.teal + "22"
+                            : theme.lavender + "22",
+                        color:
+                          skill.scope === "project"
+                            ? theme.teal
+                            : theme.lavender,
                         borderRadius: theme.borderRadiusFull,
                         border: `1px solid ${skill.scope === "project" ? theme.teal : theme.lavender}`,
                         textTransform: "uppercase",

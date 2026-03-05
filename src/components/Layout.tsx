@@ -28,7 +28,9 @@ export function Layout() {
   const [showNewAgent, setShowNewAgent] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
-  const [claudeInstalled, setClaudeInstalled] = useState<boolean | null>(null);
+  const [hasSupportedEngine, setHasSupportedEngine] = useState<boolean | null>(
+    null,
+  );
   const [resizing, setResizing] = useState(false);
   const resizeStart = useRef<{ x: number; w: number } | null>(null);
 
@@ -38,13 +40,16 @@ export function Layout() {
     init();
     useAutomationsStore.getState().initListener();
 
-    // Check if Claude Code is installed
+    // Check if any supported CLI is installed
     invoke<EngineInfo[]>("detect_engines")
       .then((engines) => {
-        const claude = engines.find((e) => e.engine === "claude");
-        setClaudeInstalled(claude?.available ?? false);
+        setHasSupportedEngine(
+          engines.some(
+            (engine) => engine.engine === "claude" && engine.available,
+          ),
+        );
       })
-      .catch(() => setClaudeInstalled(false));
+      .catch(() => setHasSupportedEngine(false));
   }, [init]);
 
   const handleKeyDown = useCallback(
@@ -70,7 +75,7 @@ export function Layout() {
               const visible = sortAgents(
                 Object.values(agents).filter((a) => !getPrefs(a.id).archived),
                 getPrefs,
-                sidebarState.manualOrder
+                sidebarState.manualOrder,
               );
               if (visible.length === 0) return;
               const currentId = useAgentStore.getState().selectedAgentId;
@@ -88,33 +93,37 @@ export function Layout() {
           case "g": // Open Git menu
             if (useAgentStore.getState().selectedAgentId) {
               e.preventDefault();
-              useAgentStore.setState({ pendingAction: 'git' });
+              useAgentStore.setState({ pendingAction: "git" });
             }
             return;
           case "r": // Open Run dialog
             if (useAgentStore.getState().selectedAgentId) {
               e.preventDefault();
-              useAgentStore.setState({ pendingAction: 'run' });
+              useAgentStore.setState({ pendingAction: "run" });
             }
             return;
           case "e": // Open Terminal menu
             if (useAgentStore.getState().selectedAgentId) {
               e.preventDefault();
-              useAgentStore.setState({ pendingAction: 'terminal' });
+              useAgentStore.setState({ pendingAction: "terminal" });
             }
             return;
           case "p": // Toggle skills view
             e.preventDefault();
             {
               const store = useAgentStore.getState();
-              store.setViewMode(store.viewMode === "skills" ? "agents" : "skills");
+              store.setViewMode(
+                store.viewMode === "skills" ? "agents" : "skills",
+              );
             }
             return;
           case "a": // Toggle automations view
             e.preventDefault();
             {
               const store = useAgentStore.getState();
-              store.setViewMode(store.viewMode === "automations" ? "agents" : "automations");
+              store.setViewMode(
+                store.viewMode === "automations" ? "agents" : "automations",
+              );
             }
             return;
           case "m": // Toggle MCP view
@@ -128,7 +137,9 @@ export function Layout() {
             e.preventDefault();
             {
               const store = useAgentStore.getState();
-              store.setViewMode(store.viewMode === "hooks" ? "agents" : "hooks");
+              store.setViewMode(
+                store.viewMode === "hooks" ? "agents" : "hooks",
+              );
             }
             return;
         }
@@ -175,7 +186,7 @@ export function Layout() {
               const visible = sortAgents(
                 Object.values(agents).filter((a) => !getPrefs(a.id).archived),
                 getPrefs,
-                sidebarState.manualOrder
+                sidebarState.manualOrder,
               );
               if (visible.length === 0) return;
               const currentId = useAgentStore.getState().selectedAgentId;
@@ -187,7 +198,7 @@ export function Layout() {
           case ".": // Agent config (Cmd+.)
             if (useAgentStore.getState().selectedAgentId) {
               e.preventDefault();
-              useAgentStore.setState({ pendingAction: 'config' });
+              useAgentStore.setState({ pendingAction: "config" });
             }
             return;
           case "b": // Toggle sidebar
@@ -205,7 +216,7 @@ export function Layout() {
           const visibleAgents = sortAgents(
             Object.values(agents).filter((a) => !getPrefs(a.id).archived),
             getPrefs,
-            sidebarState.manualOrder
+            sidebarState.manualOrder,
           );
           if (idx < visibleAgents.length) {
             selectAgent(visibleAgents[idx].id);
@@ -214,7 +225,7 @@ export function Layout() {
         }
       }
     },
-    [agents, selectAgent, showShortcuts]
+    [agents, selectAgent, showShortcuts],
   );
 
   useEffect(() => {
@@ -226,30 +237,37 @@ export function Layout() {
   const initialized = useAgentStore((s) => s.initialized);
   const agentCount = Object.keys(agents).length;
   useEffect(() => {
-    if (initialized && agentCount === 0 && !localStorage.getItem("chorus-onboarded")) {
+    if (
+      initialized &&
+      agentCount === 0 &&
+      !localStorage.getItem("chorus-onboarded")
+    ) {
       setShowOnboarding(true);
     }
   }, [initialized, agentCount]);
 
   // Sidebar resize drag
-  const handleResizePointerDown = useCallback((e: React.PointerEvent) => {
-    e.preventDefault();
-    resizeStart.current = { x: e.clientX, w: sidebarWidth };
-    setResizing(true);
-    const onMove = (ev: PointerEvent) => {
-      if (!resizeStart.current) return;
-      const delta = ev.clientX - resizeStart.current.x;
-      setSidebarWidth(resizeStart.current.w + delta);
-    };
-    const onUp = () => {
-      resizeStart.current = null;
-      setResizing(false);
-      window.removeEventListener("pointermove", onMove);
-      window.removeEventListener("pointerup", onUp);
-    };
-    window.addEventListener("pointermove", onMove);
-    window.addEventListener("pointerup", onUp);
-  }, [sidebarWidth, setSidebarWidth]);
+  const handleResizePointerDown = useCallback(
+    (e: React.PointerEvent) => {
+      e.preventDefault();
+      resizeStart.current = { x: e.clientX, w: sidebarWidth };
+      setResizing(true);
+      const onMove = (ev: PointerEvent) => {
+        if (!resizeStart.current) return;
+        const delta = ev.clientX - resizeStart.current.x;
+        setSidebarWidth(resizeStart.current.w + delta);
+      };
+      const onUp = () => {
+        resizeStart.current = null;
+        setResizing(false);
+        window.removeEventListener("pointermove", onMove);
+        window.removeEventListener("pointerup", onUp);
+      };
+      window.addEventListener("pointermove", onMove);
+      window.addEventListener("pointerup", onUp);
+    },
+    [sidebarWidth, setSidebarWidth],
+  );
 
   const COLLAPSED_WIDTH = 48;
 
@@ -267,8 +285,8 @@ export function Layout() {
         transition: "background-color 0.3s ease, color 0.3s ease",
       }}
     >
-      {/* Claude Code not installed banner */}
-      {claudeInstalled === false && (
+      {/* No supported CLI detected */}
+      {hasSupportedEngine === false && (
         <div
           style={{
             display: "flex",
@@ -286,7 +304,7 @@ export function Layout() {
         >
           <AlertTriangle size={14} />
           <span>
-            Claude Code CLI not found. Install it to get started:
+            No Claude Code CLI found. Install Claude Code to get started:
           </span>
           <code
             style={{
@@ -301,7 +319,7 @@ export function Layout() {
             npm install -g @anthropic-ai/claude-code
           </code>
           <button
-            onClick={() => setClaudeInstalled(null)}
+            onClick={() => setHasSupportedEngine(null)}
             style={{
               marginLeft: "auto",
               background: "none",
@@ -318,7 +336,15 @@ export function Layout() {
         </div>
       )}
 
-      <div style={{ flex: 1, display: "flex", flexDirection: "row", overflow: "hidden", cursor: resizing ? "col-resize" : undefined }}>
+      <div
+        style={{
+          flex: 1,
+          display: "flex",
+          flexDirection: "row",
+          overflow: "hidden",
+          cursor: resizing ? "col-resize" : undefined,
+        }}
+      >
         {collapsed ? (
           <div
             style={{
@@ -354,8 +380,19 @@ export function Layout() {
           </div>
         ) : (
           <>
-            <div style={{ width: sidebarWidth, minWidth: sidebarWidth, flexShrink: 0, height: "100%", overflow: "hidden" }}>
-              <Sidebar onNewAgent={() => setShowNewAgent(true)} onCollapse={toggleCollapsed} />
+            <div
+              style={{
+                width: sidebarWidth,
+                minWidth: sidebarWidth,
+                flexShrink: 0,
+                height: "100%",
+                overflow: "hidden",
+              }}
+            >
+              <Sidebar
+                onNewAgent={() => setShowNewAgent(true)}
+                onCollapse={toggleCollapsed}
+              />
             </div>
             {/* Resize handle */}
             <div
@@ -371,25 +408,45 @@ export function Layout() {
                 marginRight: -3,
               }}
               onMouseEnter={(e) => {
-                if (!resizing) (e.currentTarget as HTMLDivElement).style.background = theme.borderColor;
+                if (!resizing)
+                  (e.currentTarget as HTMLDivElement).style.background =
+                    theme.borderColor;
               }}
               onMouseLeave={(e) => {
-                if (!resizing) (e.currentTarget as HTMLDivElement).style.background = "transparent";
+                if (!resizing)
+                  (e.currentTarget as HTMLDivElement).style.background =
+                    "transparent";
               }}
             />
           </>
         )}
-        <div style={{ flex: 1, height: "100%", minWidth: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+        <div
+          style={{
+            flex: 1,
+            height: "100%",
+            minWidth: 0,
+            display: "flex",
+            flexDirection: "column",
+            overflow: "hidden",
+          }}
+        >
           <MainPanel />
         </div>
       </div>
 
-      {showNewAgent && <NewAgentDialog onClose={() => setShowNewAgent(false)} />}
-      {showShortcuts && <ShortcutsDialog onClose={() => setShowShortcuts(false)} />}
+      {showNewAgent && (
+        <NewAgentDialog onClose={() => setShowNewAgent(false)} />
+      )}
+      {showShortcuts && (
+        <ShortcutsDialog onClose={() => setShowShortcuts(false)} />
+      )}
       {showOnboarding && (
         <OnboardingDialog
           onClose={() => setShowOnboarding(false)}
-          onNewAgent={() => { setShowOnboarding(false); setShowNewAgent(true); }}
+          onNewAgent={() => {
+            setShowOnboarding(false);
+            setShowNewAgent(true);
+          }}
         />
       )}
       <ToastContainer />

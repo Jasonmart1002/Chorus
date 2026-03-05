@@ -9,13 +9,19 @@ interface HooksStore {
   skills: SkillFile[];
   loading: boolean;
   fetchHooks: () => Promise<void>;
-  saveHooks: (hooks: HookEntry[], scope: "user" | "project", projectCwd?: string) => Promise<void>;
+  saveHooks: (
+    hooks: HookEntry[],
+    scope: "user" | "project",
+    projectCwd?: string,
+  ) => Promise<void>;
   fetchSkills: (projectCwd?: string) => Promise<void>;
   readSkill: (path: string) => Promise<string>;
   saveSkill: (path: string, content: string) => Promise<void>;
 }
 
-async function readSettingsJson(path: string): Promise<Record<string, unknown>> {
+async function readSettingsJson(
+  path: string,
+): Promise<Record<string, unknown>> {
   try {
     const content = await invoke<string>("read_file", { path });
     return JSON.parse(content);
@@ -81,6 +87,7 @@ export const useHooksStore = create<HooksStore>((set) => ({
         path,
         content: JSON.stringify(settings, null, 2),
       });
+      set({ hooks });
       toast.success("Hooks saved");
     } catch (err) {
       toast.error(`Failed to save hooks: ${String(err)}`);
@@ -101,7 +108,9 @@ export const useHooksStore = create<HooksStore>((set) => ({
             skills.push({ name: f, path: `${userDir}/${f}`, scope: "user" });
           }
         }
-      } catch { /* dir doesn't exist */ }
+      } catch {
+        /* dir doesn't exist */
+      }
 
       // Project skills
       if (projectCwd) {
@@ -110,10 +119,16 @@ export const useHooksStore = create<HooksStore>((set) => ({
           const files = await invoke<string[]>("list_dir", { path: projDir });
           for (const f of files) {
             if (f.endsWith(".md")) {
-              skills.push({ name: f, path: `${projDir}/${f}`, scope: "project" });
+              skills.push({
+                name: f,
+                path: `${projDir}/${f}`,
+                scope: "project",
+              });
             }
           }
-        } catch { /* dir doesn't exist */ }
+        } catch {
+          /* dir doesn't exist */
+        }
       }
     } catch {
       // ignore
