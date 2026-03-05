@@ -55,11 +55,25 @@ const SECTIONS: Section[] = [
     ],
   },
   {
-    title: "App",
+    title: "Panels",
     shortcuts: [
       { keys: [MOD, SHIFT, "P"], label: "Skills & Plugins" },
       { keys: [MOD, SHIFT, "A"], label: "Automations" },
+      { keys: [MOD, SHIFT, "M"], label: "MCP Servers" },
+      { keys: [MOD, SHIFT, "H"], label: "Hooks & Skills" },
+    ],
+  },
+  {
+    title: "Agent Tools",
+    shortcuts: [
+      { keys: [MOD, "."], label: "Agent Config" },
+    ],
+  },
+  {
+    title: "App",
+    shortcuts: [
       { keys: [MOD, SHIFT, "T"], label: "Toggle theme" },
+      { keys: [MOD, "B"], label: "Toggle sidebar" },
       { keys: [MOD, "K"], label: "Show this cheat sheet" },
     ],
   },

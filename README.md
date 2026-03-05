@@ -96,6 +96,27 @@ Schedule prompts to run automatically — **daily**, **weekly**, **monthly**, or
 ### Skills Browser
 Browse and search installed Claude Code plugins, skills, and slash commands. See metadata, arguments, and file paths at a glance.
 
+### CLAUDE.md Editor
+Edit your project and user `CLAUDE.md` files without leaving the app. Two-tab editor with create, save, and live preview — keep your agent instructions in sync.
+
+### Agent Config Panel
+Fine-tune each agent: change the model, set system prompts, configure max turns and budget limits, manage permission modes, and control allowed/disallowed tools. Changes that require a restart are clearly marked with a "Save & Restart" button.
+
+### Cost Dashboard
+Track spending across all your agents in one view. See total cost, per-agent breakdowns, turn counts, and compact agents to reduce context usage — all from a single dialog.
+
+### MCP Server Management
+Add, remove, and manage MCP (Model Context Protocol) servers directly from the UI. Supports both stdio and SSE transports, with scope control (user vs. project). No more editing JSON configs by hand.
+
+### Hooks & Skills Editor
+Configure Claude Code hooks (PreToolUse, PostToolUse, etc.) and manage custom skills — all through a visual editor. Create skills with markdown bodies, set allowed tools, and organize your automation workflows.
+
+### Agent Templates
+Start new agents from pre-built templates: Code Reviewer, Bug Fixer, Doc Writer, and Refactor Pro. Each template pre-configures the agent with a specialized system prompt.
+
+### Conversation Export
+Copy any agent's conversation as formatted Markdown with one click. Great for sharing results, creating documentation, or archiving completed work.
+
 ### Keyboard-First
 Every important action has a shortcut. See the full list in the [Keyboard Shortcuts](#keyboard-shortcuts) section below, or press `Cmd+K` (`Ctrl+K` on Windows/Linux) in the app.
 
@@ -161,13 +182,23 @@ Hit **Stop** to interrupt an agent mid-task. Chorus transparently restarts the p
 |----------|--------|
 | `Cmd+N` | New agent |
 | `Cmd+1` – `Cmd+9` | Switch to agent 1–9 |
+| `Cmd+J` / `Shift+Cmd+J` | Next / Previous agent |
 | `Cmd+Enter` | Send prompt |
 | `Shift+Tab` | Toggle plan mode |
+| `Cmd+F` | Focus search |
+| `Cmd+L` | Focus prompt input |
 | `Shift+Cmd+V` | Toggle Vibe Mode |
+| `Shift+Cmd+S` | Skip agent (Vibe Mode) |
+| `Shift+Cmd+G` | Git menu |
+| `Shift+Cmd+R` | Run dialog |
+| `Shift+Cmd+E` | Terminal menu |
+| `Shift+Cmd+P` | Skills & Plugins |
+| `Shift+Cmd+A` | Automations |
+| `Shift+Cmd+M` | MCP Servers |
+| `Shift+Cmd+H` | Hooks & Skills |
+| `Cmd+.` | Agent Config |
+| `Shift+Cmd+D` | Cost Dashboard |
 | `Shift+Cmd+T` | Toggle light/dark theme |
-| `Shift+Cmd+J` | Previous agent |
-| `Shift+Cmd+K` | Next agent |
-| `Shift+Cmd+A` | New automation |
 | `Cmd+K` | Show all shortcuts |
 
 ---
@@ -221,8 +252,8 @@ This starts Vite with HMR on `localhost:1420` and launches the Tauri window. Fro
 ```
 src/                    # React frontend
   components/           # UI components (sidebar, main panel, dialogs)
-  store/                # Zustand stores (agent, automations, sidebar, theme, toast)
-  types/                # TypeScript type definitions
+  store/                # Zustand stores (agent, automations, sidebar, theme, mcp, hooks, toast)
+  types/                # TypeScript type definitions (agent, messages, mcp, hooks)
   lib/                  # Theme palettes, constants, platform utils
   hooks/                # Custom React hooks
 src-tauri/              # Rust backend
@@ -230,7 +261,8 @@ src-tauri/              # Rust backend
   src/agent/adapters/   # CLI adapter (Claude Code)
   src/automations.rs    # Automation scheduler and execution
   src/skills.rs         # Plugin/skill discovery
-  src/commands.rs       # Tauri IPC command handlers
+  src/mcp.rs            # MCP server management (list, add, remove)
+  src/commands.rs       # Tauri IPC command handlers (file I/O, agent config)
   src/tray/             # System tray integration
 ```
 

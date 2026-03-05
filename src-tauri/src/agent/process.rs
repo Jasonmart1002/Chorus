@@ -6,7 +6,7 @@ use tokio::process::{Child, Command};
 use tokio::sync::mpsc;
 
 use super::adapters::{self, ParsedEvent};
-use super::state::{AgentStatus, Engine};
+use super::state::{AgentConfig, AgentStatus, Engine};
 
 /// Global PID registry — tracks all spawned CLI processes so they can be
 /// killed reliably on app exit. Uses std::sync::Mutex (not tokio) so it's
@@ -82,17 +82,15 @@ impl AgentProcess {
         agent_id: String,
         cwd: String,
         session_id: String,
-        model: Option<String>,
-        permission_mode: String,
-        engine: Engine,
+        config: &AgentConfig,
         app_handle: tauri::AppHandle,
     ) -> Result<Self, String> {
+        let engine = config.engine.clone();
         let adapter = adapters::create_adapter(&engine);
         let binary_path = adapter.resolve_binary()?;
         let args = adapter.build_args(
             &session_id,
-            model.as_deref(),
-            &permission_mode,
+            config,
         );
 
         let mut cmd = Command::new(&binary_path);

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { Sun, Moon, Plus, Search, Zap, SkipForward, Folder, MessageSquare, CheckCircle2, Blocks, Timer, Bot } from "lucide-react";
+import { Sun, Moon, Plus, Search, Zap, SkipForward, Folder, MessageSquare, CheckCircle2, Blocks, Timer, Bot, Server, Webhook, PanelLeftClose } from "lucide-react";
 import { useAgentStore } from "../../store/agentStore";
 import { useSidebarStore, type StatusFilter } from "../../store/sidebarStore";
 import { useThemeStore } from "../../store/themeStore";
@@ -382,9 +382,10 @@ function VibeSidebarContent() {
 
 interface Props {
   onNewAgent: () => void;
+  onCollapse?: () => void;
 }
 
-export function Sidebar({ onNewAgent }: Props) {
+export function Sidebar({ onNewAgent, onCollapse }: Props) {
   const agents = useAgentStore((s) => s.agents);
   const selectedAgentId = useAgentStore((s) => s.selectedAgentId);
   const attentionSet = useAgentStore((s) => s.attentionSet);
@@ -546,9 +547,8 @@ export function Sidebar({ onNewAgent }: Props) {
   return (
     <div
       style={{
-        width: 260,
-        minWidth: 260,
-        height: "100vh",
+        width: "100%",
+        height: "100%",
         background: theme.bgSidebar,
         borderRight: `2px solid ${theme.borderColor}`,
         display: "flex",
@@ -635,7 +635,7 @@ export function Sidebar({ onNewAgent }: Props) {
           </div>
         </div>
 
-        {/* Right: theme toggle only */}
+        {/* Right: theme toggle */}
         <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
           <IconButton
             icon={
@@ -650,6 +650,15 @@ export function Sidebar({ onNewAgent }: Props) {
             hoverColor={themeMode === "light" ? theme.lavender : theme.gold}
             style={{ borderRadius: theme.borderRadiusSm }}
           />
+          {onCollapse && (
+            <IconButton
+              icon={<PanelLeftClose size={15} strokeWidth={2.2} />}
+              tooltip="Collapse sidebar"
+              onClick={onCollapse}
+              hoverColor={theme.textMuted}
+              style={{ borderRadius: theme.borderRadiusSm }}
+            />
+          )}
         </div>
       </div>
 
@@ -695,6 +704,40 @@ export function Sidebar({ onNewAgent }: Props) {
               : { borderRadius: theme.borderRadiusSm }
           }
           hoverColor={theme.gold}
+        />
+        <IconButton
+          icon={<Server size={14} strokeWidth={2.2} />}
+          tooltip="MCP Servers"
+          onClick={() => setViewMode(viewMode === "mcp" ? "agents" : "mcp")}
+          style={
+            viewMode === "mcp"
+              ? {
+                  background: theme.teal + "22",
+                  color: theme.teal,
+                  border: `2px solid ${theme.teal}`,
+                  boxShadow: theme.shadowChunky,
+                  borderRadius: theme.borderRadiusSm,
+                }
+              : { borderRadius: theme.borderRadiusSm }
+          }
+          hoverColor={theme.teal}
+        />
+        <IconButton
+          icon={<Webhook size={14} strokeWidth={2.2} />}
+          tooltip="Hooks & Skills"
+          onClick={() => setViewMode(viewMode === "hooks" ? "agents" : "hooks")}
+          style={
+            viewMode === "hooks"
+              ? {
+                  background: theme.flamingo + "22",
+                  color: theme.flamingo,
+                  border: `2px solid ${theme.flamingo}`,
+                  boxShadow: theme.shadowChunky,
+                  borderRadius: theme.borderRadiusSm,
+                }
+              : { borderRadius: theme.borderRadiusSm }
+          }
+          hoverColor={theme.flamingo}
         />
         <IconButton
           icon={<Zap size={14} strokeWidth={2.2} />}

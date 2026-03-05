@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use super::{CliAdapter, ParsedEvent};
-use crate::agent::state::Engine;
+use crate::agent::state::{AgentConfig, Engine};
 
 /// Adapter for the OpenAI Codex CLI (`codex` binary).
 ///
@@ -114,13 +114,12 @@ impl CliAdapter for CodexAdapter {
     fn build_args(
         &self,
         _session_id: &str,
-        model: Option<&str>,
-        permission_mode: &str,
+        config: &AgentConfig,
     ) -> Vec<String> {
         let mut args = vec![];
 
         // Map our permission modes to Codex modes
-        let mode = match permission_mode {
+        let mode = match config.permission_mode.as_str() {
             "bypassPermissions" => "full-auto",
             "plan" => "suggest",
             _ => "suggest", // default to suggest (safest)
@@ -132,7 +131,7 @@ impl CliAdapter for CodexAdapter {
         // Use quiet mode for cleaner output
         args.push("--quiet".to_string());
 
-        if let Some(m) = model {
+        if let Some(m) = &config.model {
             args.push("--model".to_string());
             args.push(m.to_string());
         }

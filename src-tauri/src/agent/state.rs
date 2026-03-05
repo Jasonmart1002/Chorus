@@ -35,6 +35,20 @@ pub struct AgentConfig {
     pub model: Option<String>,
     pub permission_mode: String,
     pub engine: Engine,
+    #[serde(default)]
+    pub system_prompt: Option<String>,
+    #[serde(default)]
+    pub append_system_prompt: Option<String>,
+    #[serde(default)]
+    pub max_turns: Option<u32>,
+    #[serde(default)]
+    pub max_budget_usd: Option<f64>,
+    #[serde(default)]
+    pub allowed_tools: Option<Vec<String>>,
+    #[serde(default)]
+    pub disallowed_tools: Option<Vec<String>>,
+    #[serde(default)]
+    pub additional_dirs: Option<Vec<String>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

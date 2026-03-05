@@ -4,7 +4,7 @@ pub mod gemini;
 
 use std::path::PathBuf;
 
-use super::state::Engine;
+use super::state::{AgentConfig, Engine};
 
 /// Result of parsing one line of stdout/stderr from a CLI process.
 /// Each variant maps to something the frontend needs to know about.
@@ -40,8 +40,7 @@ pub trait CliAdapter: Send + Sync {
     fn build_args(
         &self,
         session_id: &str,
-        model: Option<&str>,
-        permission_mode: &str,
+        config: &AgentConfig,
     ) -> Vec<String>;
 
     /// Parse a single line of stdout. Returns events for the frontend.

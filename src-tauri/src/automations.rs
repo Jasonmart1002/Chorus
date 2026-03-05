@@ -377,15 +377,20 @@ async fn fire_automation(
         model: None,
         permission_mode: perm_mode.clone(),
         engine: engine.clone(),
+        system_prompt: None,
+        append_system_prompt: None,
+        max_turns: None,
+        max_budget_usd: None,
+        allowed_tools: None,
+        disallowed_tools: None,
+        additional_dirs: None,
     };
 
     let process = AgentProcess::spawn(
         agent_id.clone(),
         cwd,
         session_id.clone(),
-        None,
-        perm_mode,
-        engine.clone(),
+        &config,
         app.clone(),
     )?;
 

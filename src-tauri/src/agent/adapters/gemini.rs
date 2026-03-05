@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use super::{CliAdapter, ParsedEvent};
-use crate::agent::state::Engine;
+use crate::agent::state::{AgentConfig, Engine};
 
 /// Adapter for the Gemini CLI (`gemini` binary).
 ///
@@ -84,15 +84,14 @@ impl CliAdapter for GeminiAdapter {
     fn build_args(
         &self,
         _session_id: &str,
-        model: Option<&str>,
-        _permission_mode: &str,
+        config: &AgentConfig,
     ) -> Vec<String> {
         let mut args = vec![
             "--output-format".to_string(),
             "stream-json".to_string(),
         ];
 
-        if let Some(m) = model {
+        if let Some(m) = &config.model {
             args.push("--model".to_string());
             args.push(m.to_string());
         }

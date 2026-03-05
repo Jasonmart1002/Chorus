@@ -41,15 +41,20 @@ pub async fn create_agent(
         model: model.clone(),
         permission_mode: perm_mode.clone(),
         engine: engine.clone(),
+        system_prompt: None,
+        append_system_prompt: None,
+        max_turns: None,
+        max_budget_usd: None,
+        allowed_tools: None,
+        disallowed_tools: None,
+        additional_dirs: None,
     };
 
     let process = AgentProcess::spawn(
         agent_id.clone(),
         cwd,
         session_id.clone(),
-        model,
-        perm_mode,
-        engine,
+        &config,
         app,
     )?;
 
@@ -133,9 +138,7 @@ pub async fn stop_agent(
         agent_id.clone(),
         config.cwd.clone(),
         session_id,
-        config.model.clone(),
-        config.permission_mode.clone(),
-        config.engine.clone(),
+        &config,
         app.clone(),
     ) {
         Ok(p) => p,
@@ -220,9 +223,7 @@ pub async fn restore_agent(
         agent_id.clone(),
         config.cwd.clone(),
         session_id,
-        config.model.clone(),
-        config.permission_mode.clone(),
-        config.engine.clone(),
+        &config,
         app.clone(),
     )?;
 
@@ -536,6 +537,162 @@ end tell"#,
         if !launched {
             return Err("Failed to open terminal: no supported terminal emulator found. Tried: x-terminal-emulator, gnome-terminal, konsole, xfce4-terminal, alacritty, kitty, wezterm, xterm".to_string());
         }
+    }
+
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// File I/O — used by CLAUDE.md editor, hooks editor, etc.
+// ---------------------------------------------------------------------------
+
+#[tauri::command]
+pub async fn read_file(path: String) -> Result<String, String> {
+    std::fs::read_to_string(&path).map_err(|e| format!("Read error: {}", e))
+}
+
+#[tauri::command]
+pub async fn write_file(path: String, content: String) -> Result<(), String> {
+    // Ensure parent directory exists
+    if let Some(parent) = std::path::Path::new(&path).parent() {
+        let _ = std::fs::create_dir_all(parent);
+    }
+    std::fs::write(&path, content).map_err(|e| format!("Write error: {}", e))
+}
+
+#[tauri::command]
+pub async fn file_exists(path: String) -> Result<bool, String> {
+    Ok(std::path::Path::new(&path).exists())
+}
+
+#[tauri::command]
+pub async fn get_home_dir() -> Result<String, String> {
+    #[cfg(unix)]
+    {
+        std::env::var("HOME").map_err(|_| "HOME not set".to_string())
+    }
+    #[cfg(windows)]
+    {
+        std::env::var("USERPROFILE").map_err(|_| "USERPROFILE not set".to_string())
+    }
+}
+
+#[tauri::command]
+pub async fn list_dir(path: String) -> Result<Vec<String>, String> {
+    let entries = std::fs::read_dir(&path).map_err(|e| format!("Read dir error: {}", e))?;
+    let mut names = Vec::new();
+    for entry in entries {
+        if let Ok(e) = entry {
+            names.push(e.file_name().to_string_lossy().to_string());
+        }
+    }
+    names.sort();
+    Ok(names)
+}
+
+// ---------------------------------------------------------------------------
+// Agent config update — kill + respawn with new config
+// ---------------------------------------------------------------------------
+
+#[tauri::command]
+pub async fn update_agent_config(
+    agent_id: String,
+    system_prompt: Option<String>,
+    append_system_prompt: Option<String>,
+    max_turns: Option<u32>,
+    max_budget_usd: Option<f64>,
+    permission_mode: Option<String>,
+    allowed_tools: Option<Vec<String>>,
+    disallowed_tools: Option<Vec<String>>,
+    additional_dirs: Option<Vec<String>>,
+    model: Option<String>,
+    manager: tauri::State<'_, ManagerState>,
+    app: tauri::AppHandle,
+) -> Result<(), String> {
+    // 1. Update config in manager
+    let (config, session_id, old_process) = {
+        let mut mgr = manager.lock().await;
+        let agent = mgr
+            .agents
+            .get_mut(&agent_id)
+            .ok_or_else(|| format!("Agent {} not found", agent_id))?;
+
+        // Apply updates to config
+        if let Some(sp) = system_prompt {
+            agent.config.system_prompt = if sp.is_empty() { None } else { Some(sp) };
+        }
+        if let Some(asp) = append_system_prompt {
+            agent.config.append_system_prompt = if asp.is_empty() { None } else { Some(asp) };
+        }
+        if let Some(mt) = max_turns {
+            agent.config.max_turns = if mt == 0 { None } else { Some(mt) };
+        }
+        if let Some(mb) = max_budget_usd {
+            agent.config.max_budget_usd = if mb <= 0.0 { None } else { Some(mb) };
+        }
+        if let Some(pm) = permission_mode {
+            agent.config.permission_mode = pm;
+        }
+        if let Some(at) = allowed_tools {
+            agent.config.allowed_tools = if at.is_empty() { None } else { Some(at) };
+        }
+        if let Some(dt) = disallowed_tools {
+            agent.config.disallowed_tools = if dt.is_empty() { None } else { Some(dt) };
+        }
+        if let Some(ad) = additional_dirs {
+            agent.config.additional_dirs = if ad.is_empty() { None } else { Some(ad) };
+        }
+        if let Some(m) = model {
+            agent.config.model = if m.is_empty() { None } else { Some(m) };
+        }
+
+        let config = agent.config.clone();
+        let session_id = agent.session_id.clone();
+        let process = mgr
+            .processes
+            .remove(&agent_id)
+            .ok_or_else(|| format!("No process for agent {}", agent_id))?;
+        let _ = mgr.save();
+        (config, session_id, process)
+    };
+
+    // 2. Kill old process (suppress exit event)
+    let mut old_process = old_process;
+    old_process.set_suppress_exit(true);
+    old_process.terminate();
+    let exited = tokio::time::timeout(
+        std::time::Duration::from_secs(3),
+        old_process.wait(),
+    )
+    .await;
+    if exited.is_err() {
+        let _ = old_process.kill();
+        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+    }
+    drop(old_process);
+    tokio::time::sleep(std::time::Duration::from_millis(200)).await;
+
+    // 3. Respawn with updated config
+    let new_process = AgentProcess::spawn(
+        agent_id.clone(),
+        config.cwd.clone(),
+        session_id,
+        &config,
+        app.clone(),
+    ).map_err(|e| {
+        let _ = app.emit(
+            "agent-status-changed",
+            StatusChange {
+                agent_id: agent_id.clone(),
+                status: AgentStatus::Exited,
+            },
+        );
+        e
+    })?;
+
+    {
+        let mut mgr = manager.lock().await;
+        mgr.processes.insert(agent_id, new_process);
     }
 
     Ok(())

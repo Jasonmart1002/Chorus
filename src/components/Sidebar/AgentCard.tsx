@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { X, Pin, Folder, Check, Zap } from "lucide-react";
+import { X, Pin, Folder, Check, Zap, PinOff, Edit3, Minimize2, RotateCw, Archive, Trash2 } from "lucide-react";
 import type { Agent } from "../../types/agent";
 import { getStatusColors, STATUS_LABELS } from "../../lib/constants";
 import { PASTEL_KEYS } from "../../lib/theme";
@@ -32,16 +32,22 @@ export function AgentCard({
 }: Props) {
   const selectAgent = useAgentStore((s) => s.selectAgent);
   const removeAgent = useAgentStore((s) => s.removeAgent);
+  const sendPrompt = useAgentStore((s) => s.sendPrompt);
+  const restoreAgent = useAgentStore((s) => s.restoreAgent);
   const prefs = useSidebarStore((s) => s.getPrefs(agent.id));
   const setDisplayName = useSidebarStore((s) => s.setDisplayName);
+  const togglePin = useSidebarStore((s) => s.togglePin);
+  const toggleArchive = useSidebarStore((s) => s.toggleArchive);
   const theme = useThemeStore((s) => s.current);
 
   const [hovered, setHovered] = useState(false);
   const [editing, setEditing] = useState(false);
   const [editValue, setEditValue] = useState("");
   const [confirming, setConfirming] = useState(false);
+  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number } | null>(null);
   const confirmTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const ctxMenuRef = useRef<HTMLDivElement>(null);
 
   const statusColor = getStatusColors(theme)[agent.status] || theme.textMuted;
   const displayName = getDisplayName(agent, prefs);
@@ -76,6 +82,18 @@ export function AgentCard({
     }
   }, [editing]);
 
+  // Close context menu on outside click or scroll
+  useEffect(() => {
+    if (!ctxMenu) return;
+    const close = () => setCtxMenu(null);
+    document.addEventListener("mousedown", close);
+    document.addEventListener("scroll", close, true);
+    return () => {
+      document.removeEventListener("mousedown", close);
+      document.removeEventListener("scroll", close, true);
+    };
+  }, [ctxMenu]);
+
   const startRename = () => {
     setEditValue(displayName);
     setEditing(true);
@@ -93,6 +111,24 @@ export function AgentCard({
 
   const cancelRename = () => {
     setEditing(false);
+  };
+
+  const handleContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setCtxMenu({ x: e.clientX, y: e.clientY });
+  };
+
+  const canSend = agent.status === "awaiting_input" || agent.status === "idle";
+
+  const handleCompact = () => {
+    setCtxMenu(null);
+    if (canSend) sendPrompt(agent.id, "/compact");
+  };
+
+  const handleRestart = () => {
+    setCtxMenu(null);
+    restoreAgent(agent.id);
   };
 
   const handleCloseClick = (e: React.MouseEvent) => {
@@ -135,6 +171,7 @@ export function AgentCard({
         if (didDragRef?.current) return;
         selectAgent(agent.id);
       }}
+      onContextMenu={handleContextMenu}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       onPointerDown={onPointerDown}
@@ -347,6 +384,119 @@ export function AgentCard({
           {statusLabel}
         </span>
       </div>
+
+      {/* Context menu (portal-free, fixed position) */}
+      {ctxMenu && (
+        <div
+          ref={ctxMenuRef}
+          onMouseDown={(e) => e.stopPropagation()}
+          style={{
+            position: "fixed",
+            left: ctxMenu.x,
+            top: ctxMenu.y,
+            zIndex: 200,
+            background: theme.bgSurface,
+            border: `2px solid ${theme.borderStrong}`,
+            borderRadius: theme.borderRadiusSm,
+            padding: 5,
+            minWidth: 160,
+            boxShadow: theme.shadowDialog,
+            animation: "fadeIn 0.12s ease-out",
+          }}
+        >
+          <CtxItem
+            icon={<Edit3 size={12} />}
+            label="Rename"
+            onClick={() => { setCtxMenu(null); startRename(); }}
+            theme={theme}
+          />
+          <CtxItem
+            icon={prefs.pinned ? <PinOff size={12} /> : <Pin size={12} />}
+            label={prefs.pinned ? "Unpin" : "Pin"}
+            onClick={() => { setCtxMenu(null); togglePin(agent.id); }}
+            theme={theme}
+          />
+          <CtxItem
+            icon={<Minimize2 size={12} />}
+            label="Compact"
+            onClick={handleCompact}
+            disabled={!canSend}
+            theme={theme}
+          />
+          <CtxItem
+            icon={<RotateCw size={12} />}
+            label="Restart"
+            onClick={handleRestart}
+            theme={theme}
+          />
+          <div style={{ height: 1, background: theme.borderColor, margin: "4px 6px" }} />
+          <CtxItem
+            icon={<Archive size={12} />}
+            label={prefs.archived ? "Unarchive" : "Archive"}
+            onClick={() => { setCtxMenu(null); toggleArchive(agent.id); }}
+            theme={theme}
+          />
+          <CtxItem
+            icon={<Trash2 size={12} />}
+            label="Remove"
+            onClick={() => { setCtxMenu(null); removeAgent(agent.id); }}
+            theme={theme}
+            danger
+          />
+        </div>
+      )}
     </div>
+  );
+}
+
+/* Lightweight context menu item */
+function CtxItem({ icon, label, onClick, theme, disabled, danger }: {
+  icon: React.ReactNode;
+  label: string;
+  onClick: () => void;
+  theme: ReturnType<typeof useThemeStore.getState>["current"];
+  disabled?: boolean;
+  danger?: boolean;
+}) {
+  const [hovered, setHovered] = useState(false);
+  return (
+    <button
+      onClick={disabled ? undefined : onClick}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        width: "100%",
+        padding: "7px 12px",
+        background: hovered && !disabled
+          ? danger ? theme.peachLight : theme.pinkLight
+          : "transparent",
+        border: "none",
+        borderRadius: theme.borderRadiusSm,
+        cursor: disabled ? "not-allowed" : "pointer",
+        textAlign: "left",
+        fontSize: 12,
+        fontWeight: 600,
+        fontFamily: theme.fontBody,
+        color: disabled
+          ? theme.textMuted
+          : danger
+            ? theme.peach
+            : theme.textPrimary,
+        display: "flex",
+        alignItems: "center",
+        gap: 10,
+        opacity: disabled ? 0.5 : 1,
+        transition: "background 0.1s ease",
+      }}
+    >
+      <span style={{
+        display: "flex",
+        color: disabled ? theme.textMuted : danger ? theme.peach : hovered ? theme.pink : theme.textMuted,
+        transition: "color 0.1s ease",
+      }}>
+        {icon}
+      </span>
+      {label}
+    </button>
   );
 }

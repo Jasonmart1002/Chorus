@@ -469,8 +469,6 @@ function AssistantText({ text }: { text: string }) {
 function ResultView({ message }: { message: ResultMessage }) {
   const theme = useThemeStore((s) => s.current);
   const isError = message.subtype !== "success";
-  const numTurns = message.num_turns;
-
   const bg = isError ? theme.peachLight : theme.mintLight;
   const border = isError ? theme.peach : theme.mint;
   const iconColor = isError ? theme.peach : theme.mint;
@@ -522,18 +520,6 @@ function ResultView({ message }: { message: ResultMessage }) {
       >
         {isError ? "Error" : "Turn complete \u2713"}
       </span>
-
-      {numTurns != null && numTurns > 0 && (
-        <span
-          style={{
-            color: theme.textMuted,
-            fontSize: 11,
-            fontFamily: theme.fontBody,
-          }}
-        >
-          &middot; {numTurns} turn{numTurns !== 1 ? "s" : ""}
-        </span>
-      )}
     </div>
   );
 }

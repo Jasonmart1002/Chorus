@@ -31,6 +31,13 @@ export interface AgentConfig {
   model?: string;
   permission_mode: string;
   engine: Engine;
+  system_prompt?: string;
+  append_system_prompt?: string;
+  max_turns?: number;
+  max_budget_usd?: number;
+  allowed_tools?: string[];
+  disallowed_tools?: string[];
+  additional_dirs?: string[];
 }
 
 export interface Agent {
@@ -39,6 +46,4 @@ export interface Agent {
   status: AgentStatus;
   session_id: string;
   created_at: string;
-  cost_usd: number;
-  num_turns: number;
 }

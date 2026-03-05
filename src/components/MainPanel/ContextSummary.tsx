@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Cpu, RotateCw, Folder, Play, Loader, GitBranch, ChevronDown, TerminalSquare, Zap } from "lucide-react";
+import { Cpu, Folder, Play, Loader, GitBranch, ChevronDown, TerminalSquare, Zap, FileText, Settings, Copy, Check } from "lucide-react";
 import type { Agent } from "../../types/agent";
 import { ENGINE_LABELS } from "../../types/agent";
 import { getStatusColors, STATUS_LABELS } from "../../lib/constants";
@@ -9,9 +9,14 @@ import { useThemeStore } from "../../store/themeStore";
 import { getDisplayName } from "../../lib/sortAgents";
 import { RunDialog } from "../RunDialog";
 import { DiffDialog } from "../DiffDialog";
+import { ClaudeMdDialog } from "../ClaudeMdDialog";
+import { AgentConfigDialog } from "../AgentConfigDialog";
 import { IconButton } from "../ui/IconButton";
 import { Badge } from "../ui/Badge";
 import { DropdownMenu, DropdownMenuItem } from "../ui/DropdownMenu";
+import type { SDKMessage } from "../../types/messages";
+
+const EMPTY_MESSAGES: SDKMessage[] = [];
 
 const GIT_ACTIONS = [
   {
@@ -49,13 +54,17 @@ export function ContextSummary({ agent }: Props) {
   const [showDiff, setShowDiff] = useState(false);
   const [showGitMenu, setShowGitMenu] = useState(false);
   const [showTermMenu, setShowTermMenu] = useState(false);
+  const [showClaudeMd, setShowClaudeMd] = useState(false);
+  const [showConfig, setShowConfig] = useState(false);
   const commandState = useAgentStore((s) => s.commandStates[agent.config.cwd]);
   const sendPrompt = useAgentStore((s) => s.sendPrompt);
   const openTerminal = useAgentStore((s) => s.openTerminal);
   const openClaudeTerminal = useAgentStore((s) => s.openClaudeTerminal);
   const pendingAction = useAgentStore((s) => s.pendingAction);
   const clearPendingAction = useAgentStore((s) => s.clearPendingAction);
+  const messages = useAgentStore((s) => s.messages[agent.id] || EMPTY_MESSAGES);
   const isRunning = commandState?.running === true;
+  const [copied, setCopied] = useState(false);
 
   const canSend = agent.status === "awaiting_input" || agent.status === "idle";
 
@@ -65,8 +74,37 @@ export function ContextSummary({ agent }: Props) {
     if (pendingAction === 'git') setShowGitMenu(true);
     else if (pendingAction === 'terminal') setShowTermMenu(true);
     else if (pendingAction === 'run') setShowRun(true);
+    else if (pendingAction === 'config') setShowConfig(true);
     clearPendingAction();
   }, [pendingAction, clearPendingAction]);
+
+  const handleCopyMarkdown = async () => {
+    const lines: string[] = [`# ${displayName}\n`];
+    for (const msg of messages) {
+      if (msg.type === "user_prompt") {
+        lines.push(`## User\n\n${msg.text}\n`);
+      } else if (msg.type === "assistant") {
+        const textParts = msg.message.content
+          .filter((b) => b.type === "text")
+          .map((b) => (b as { type: "text"; text: string }).text);
+        if (textParts.length > 0) {
+          lines.push(`## Assistant\n\n${textParts.join("\n\n")}\n`);
+        }
+        const toolUses = msg.message.content.filter((b) => b.type === "tool_use");
+        for (const t of toolUses) {
+          const tu = t as { type: "tool_use"; name: string; input: Record<string, unknown> };
+          lines.push(`> Tool: \`${tu.name}\`\n`);
+        }
+      } else if (msg.type === "result") {
+        if (msg.result) {
+          lines.push(`## Result\n\n${msg.result}\n`);
+        }
+      }
+    }
+    await navigator.clipboard.writeText(lines.join("\n"));
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   const handleGitAction = async (prompt: string) => {
     setShowGitMenu(false);
@@ -167,13 +205,6 @@ export function ContextSummary({ agent }: Props) {
             </span>
           </span>
 
-          {agent.num_turns > 0 && (
-            <span style={pillStyle}>
-              <RotateCw size={11} color={theme.teal} />
-              {agent.num_turns} turns
-            </span>
-          )}
-
           {agent.config.model && (
             <span style={pillStyle}>
               <Cpu size={11} color={theme.mauve} />
@@ -184,6 +215,27 @@ export function ContextSummary({ agent }: Props) {
 
         {/* Action buttons */}
         <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
+          <IconButton
+            icon={<FileText size={12} />}
+            tooltip="CLAUDE.md"
+            onClick={() => setShowClaudeMd(true)}
+            hoverColor={theme.lavender}
+            style={{ borderRadius: theme.borderRadiusSm }}
+          />
+          <IconButton
+            icon={<Settings size={12} />}
+            tooltip="Agent Config"
+            onClick={() => setShowConfig(true)}
+            hoverColor={theme.sapphire}
+            style={{ borderRadius: theme.borderRadiusSm }}
+          />
+          <IconButton
+            icon={copied ? <Check size={12} /> : <Copy size={12} />}
+            tooltip={copied ? "Copied!" : "Copy as Markdown"}
+            onClick={handleCopyMarkdown}
+            hoverColor={theme.teal}
+            style={{ borderRadius: theme.borderRadiusSm }}
+          />
           <DropdownMenu
             trigger={
               <IconButton
@@ -297,6 +349,8 @@ export function ContextSummary({ agent }: Props) {
 
       {showRun && <RunDialog cwd={agent.config.cwd} onClose={() => setShowRun(false)} />}
       {showDiff && <DiffDialog cwd={agent.config.cwd} onClose={() => setShowDiff(false)} />}
+      {showClaudeMd && <ClaudeMdDialog open={showClaudeMd} onClose={() => setShowClaudeMd(false)} cwd={agent.config.cwd} />}
+      {showConfig && <AgentConfigDialog open={showConfig} onClose={() => setShowConfig(false)} agent={agent} />}
     </>
   );
 }

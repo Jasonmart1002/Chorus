@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use super::{CliAdapter, ParsedEvent};
-use crate::agent::state::Engine;
+use crate::agent::state::{AgentConfig, Engine};
 
 /// Adapter for the Claude Code CLI (`claude` binary).
 ///
@@ -75,9 +75,9 @@ impl CliAdapter for ClaudeAdapter {
     fn build_args(
         &self,
         session_id: &str,
-        model: Option<&str>,
-        permission_mode: &str,
+        config: &AgentConfig,
     ) -> Vec<String> {
+        let permission_mode = &config.permission_mode;
         let mut args = vec![
             "-p".to_string(),
             "--output-format".to_string(),
@@ -103,9 +103,46 @@ impl CliAdapter for ClaudeAdapter {
             args.push("AskUserQuestion".to_string());
         }
 
-        if let Some(m) = model {
+        if let Some(m) = &config.model {
             args.push("--model".to_string());
             args.push(m.to_string());
+        }
+
+        // Extended config flags
+        if let Some(ref sp) = config.append_system_prompt {
+            args.push("--append-system-prompt".to_string());
+            args.push(sp.clone());
+        }
+
+        if let Some(mt) = config.max_turns {
+            args.push("--max-turns".to_string());
+            args.push(mt.to_string());
+        }
+
+        if let Some(mb) = config.max_budget_usd {
+            args.push("--max-budget-usd".to_string());
+            args.push(format!("{:.2}", mb));
+        }
+
+        if let Some(ref tools) = config.allowed_tools {
+            for tool in tools {
+                args.push("--allowedTools".to_string());
+                args.push(tool.clone());
+            }
+        }
+
+        if let Some(ref tools) = config.disallowed_tools {
+            for tool in tools {
+                args.push("--disallowed-tools".to_string());
+                args.push(tool.clone());
+            }
+        }
+
+        if let Some(ref dirs) = config.additional_dirs {
+            for dir in dirs {
+                args.push("--add-dir".to_string());
+                args.push(dir.clone());
+            }
         }
 
         args

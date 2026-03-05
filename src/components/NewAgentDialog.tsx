@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { open } from "@tauri-apps/plugin-dialog";
-import { FolderOpen } from "lucide-react";
+import { FolderOpen, Code2, Bug, BookOpen, Sparkles } from "lucide-react";
 import { useAgentStore } from "../store/agentStore";
 import { useThemeStore } from "../store/themeStore";
 import { DEFAULT_PERMISSION_MODE } from "../lib/constants";
@@ -13,6 +13,40 @@ import { IconButton } from "./ui/IconButton";
 interface Props {
   onClose: () => void;
 }
+
+interface Template {
+  icon: React.ComponentType<{ size?: number; color?: string; strokeWidth?: number }>;
+  name: string;
+  color: string;
+  prompt: string;
+}
+
+const TEMPLATES: Template[] = [
+  {
+    icon: Code2,
+    name: "Code Reviewer",
+    color: "sapphire",
+    prompt: "You are a code reviewer. Review code changes for bugs, style issues, security problems, and suggest improvements. Be thorough but constructive.",
+  },
+  {
+    icon: Bug,
+    name: "Bug Fixer",
+    color: "peach",
+    prompt: "You are a debugging specialist. Help find and fix bugs efficiently. Start by understanding the symptoms, then investigate root causes systematically.",
+  },
+  {
+    icon: BookOpen,
+    name: "Doc Writer",
+    color: "mint",
+    prompt: "You are a documentation specialist. Write clear, concise documentation for codebases. Focus on architecture overviews, API docs, and inline comments.",
+  },
+  {
+    icon: Sparkles,
+    name: "Refactor Pro",
+    color: "mauve",
+    prompt: "You are a refactoring expert. Improve code quality, reduce duplication, and modernize patterns while maintaining existing behavior. Always run tests after changes.",
+  },
+];
 
 const MODELS = [
   { value: "", label: "Default", description: "Uses your CLI default" },
@@ -30,6 +64,7 @@ export function NewAgentDialog({ onClose }: Props) {
   const [permMode, setPermMode] = useState(DEFAULT_PERMISSION_MODE);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [selectedTemplate, setSelectedTemplate] = useState<number | null>(null);
 
   const handlePickDir = async () => {
     const selected = await open({ directory: true, multiple: false });
@@ -41,18 +76,37 @@ export function NewAgentDialog({ onClose }: Props) {
     }
   };
 
+  const handleSelectTemplate = (idx: number) => {
+    if (selectedTemplate === idx) {
+      setSelectedTemplate(null);
+      setName("");
+    } else {
+      setSelectedTemplate(idx);
+      setName(TEMPLATES[idx].name);
+    }
+  };
+
   const handleCreate = async () => {
     if (!name.trim() || !cwd.trim()) return;
     setCreating(true);
     setError(null);
     try {
-      await createAgent(
+      const agentId = await createAgent(
         name.trim(),
         cwd.trim(),
         model || undefined,
         permMode,
         "claude"
       );
+      // If a template was selected, send the system prompt as initial message
+      if (selectedTemplate !== null) {
+        const tmpl = TEMPLATES[selectedTemplate];
+        try {
+          await useAgentStore.getState().sendPrompt(agentId, tmpl.prompt);
+        } catch {
+          // Agent created successfully, prompt send is best-effort
+        }
+      }
       onClose();
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
@@ -96,6 +150,48 @@ export function NewAgentDialog({ onClose }: Props) {
       }
     >
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        {/* Template presets */}
+        <div>
+          <span style={labelStyle}>Start from a template</span>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+            {TEMPLATES.map((tmpl, i) => {
+              const sel = selectedTemplate === i;
+              const tColor = (theme as unknown as Record<string, string>)[tmpl.color] || theme.textMuted;
+              const TIcon = tmpl.icon;
+              return (
+                <button
+                  key={tmpl.name}
+                  type="button"
+                  onClick={() => handleSelectTemplate(i)}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                    padding: "10px 12px",
+                    background: sel ? `${tColor}18` : theme.bgBase,
+                    border: sel ? `2px solid ${tColor}` : `2px solid ${theme.borderStrong}`,
+                    borderRadius: theme.borderRadiusSm,
+                    cursor: "pointer",
+                    transition: `all 0.15s ${theme.easeSpring}`,
+                    boxShadow: sel ? theme.shadowChunky : "none",
+                    textAlign: "left",
+                  }}
+                >
+                  <TIcon size={16} color={tColor} strokeWidth={2.5} />
+                  <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, fontFamily: theme.fontHeading, color: sel ? tColor : theme.textPrimary }}>
+                      {tmpl.name}
+                    </span>
+                    <span style={{ fontSize: 9, fontFamily: theme.fontBody, color: theme.textMuted, lineHeight: 1.3 }}>
+                      {tmpl.prompt.slice(0, 50)}...
+                    </span>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
         <label style={{ display: "block" }}>
           <span style={labelStyle}>Name</span>
           <Input

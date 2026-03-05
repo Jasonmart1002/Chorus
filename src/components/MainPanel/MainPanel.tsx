@@ -5,6 +5,8 @@ import { AgentView } from "./AgentView";
 import { VibeMode } from "./VibeMode";
 import { SkillsView } from "./SkillsView";
 import { AutomationsView } from "./AutomationsView";
+import { McpView } from "./McpView";
+import { HooksView } from "./HooksView";
 import { Bot } from "lucide-react";
 
 export function MainPanel() {
@@ -33,6 +35,22 @@ export function MainPanel() {
     return (
       <div style={{ flex: 1, height: "100%", minWidth: 0, overflow: "hidden" }}>
         <AutomationsView />
+      </div>
+    );
+  }
+
+  if (viewMode === "mcp") {
+    return (
+      <div style={{ flex: 1, height: "100%", minWidth: 0, overflow: "hidden" }}>
+        <McpView />
+      </div>
+    );
+  }
+
+  if (viewMode === "hooks") {
+    return (
+      <div style={{ flex: 1, height: "100%", minWidth: 0, overflow: "hidden" }}>
+        <HooksView />
       </div>
     );
   }

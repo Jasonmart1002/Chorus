@@ -1,6 +1,7 @@
 mod agent;
 mod automations;
 mod commands;
+mod mcp;
 mod skills;
 mod tray;
 
@@ -41,6 +42,15 @@ pub fn run() {
             commands::kill_running_command,
             commands::open_terminal,
             commands::open_claude_terminal,
+            commands::read_file,
+            commands::write_file,
+            commands::file_exists,
+            commands::get_home_dir,
+            commands::list_dir,
+            commands::update_agent_config,
+            mcp::mcp_list,
+            mcp::mcp_add,
+            mcp::mcp_remove,
             skills::get_installed_skills,
             automations::list_automations,
             automations::create_automation,

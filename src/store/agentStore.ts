@@ -11,7 +11,7 @@ import type {
 import { useSidebarStore } from "./sidebarStore";
 import { toast } from "./toastStore";
 
-export type ViewMode = "agents" | "skills" | "automations";
+export type ViewMode = "agents" | "skills" | "automations" | "mcp" | "hooks";
 
 export interface CommandState {
   cwd: string;
@@ -42,7 +42,7 @@ interface AgentStore {
   viewMode: ViewMode;
 
   // Pending action (triggered by global shortcuts, consumed by ContextSummary)
-  pendingAction: 'git' | 'terminal' | 'run' | null;
+  pendingAction: 'git' | 'terminal' | 'run' | 'config' | null;
 
   // Actions
   setViewMode: (mode: ViewMode) => void;
@@ -158,27 +158,6 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
         }
       }
 
-      // Update cost/turns from result messages
-      if (message.type === "result") {
-        const costUsd = message.total_cost_usd;
-        const numTurns = message.num_turns;
-        if (costUsd !== undefined || numTurns !== undefined) {
-          set((state) => {
-            const agent = state.agents[agent_id];
-            if (!agent) return state;
-            return {
-              agents: {
-                ...state.agents,
-                [agent_id]: {
-                  ...agent,
-                  cost_usd: costUsd ?? agent.cost_usd,
-                  num_turns: numTurns ?? agent.num_turns,
-                },
-              },
-            };
-          });
-        }
-      }
     });
 
     // Listen for status changes
@@ -303,8 +282,6 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
       status: "idle",
       session_id: result.session_id,
       created_at: new Date().toISOString(),
-      cost_usd: 0,
-      num_turns: 0,
     };
 
     set((state) => ({

@@ -17,6 +17,8 @@ interface SidebarStore {
   manualOrder: string[];
   searchOpen: boolean;
   focusSearchCounter: number;
+  collapsed: boolean;
+  sidebarWidth: number;
 
   togglePin: (agentId: string) => void;
   toggleArchive: (agentId: string) => void;
@@ -30,6 +32,8 @@ interface SidebarStore {
   setManualOrder: (order: string[]) => void;
   moveAgent: (fromId: string, toId: string) => void;
   triggerFocusSearch: () => void;
+  toggleCollapsed: () => void;
+  setSidebarWidth: (width: number) => void;
 }
 
 const DEFAULT_PREFS: AgentPrefs = { pinned: false, archived: false, displayName: null };
@@ -44,6 +48,8 @@ export const useSidebarStore = create<SidebarStore>()(
       manualOrder: [],
       searchOpen: false,
       focusSearchCounter: 0,
+      collapsed: false,
+      sidebarWidth: 260,
 
       togglePin: (agentId) =>
         set((state) => {
@@ -101,6 +107,9 @@ export const useSidebarStore = create<SidebarStore>()(
       triggerFocusSearch: () =>
         set((state) => ({ focusSearchCounter: state.focusSearchCounter + 1 })),
 
+      toggleCollapsed: () => set((state) => ({ collapsed: !state.collapsed })),
+      setSidebarWidth: (width) => set({ sidebarWidth: Math.max(200, Math.min(450, width)) }),
+
       moveAgent: (fromId, toId) =>
         set((state) => {
           const order = [...state.manualOrder];
@@ -118,6 +127,8 @@ export const useSidebarStore = create<SidebarStore>()(
         agentPrefs: state.agentPrefs,
         showArchived: state.showArchived,
         manualOrder: state.manualOrder,
+        collapsed: state.collapsed,
+        sidebarWidth: state.sidebarWidth,
       }),
       migrate: (persisted: unknown, version: number) => {
         // One-time migration from old key
