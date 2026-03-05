@@ -1,5 +1,6 @@
-import { X, Zap, SkipForward } from "lucide-react";
+import { X, Zap, SkipForward, Square, Archive } from "lucide-react";
 import { useAgentStore } from "../../store/agentStore";
+import { useSidebarStore } from "../../store/sidebarStore";
 import { useThemeStore } from "../../store/themeStore";
 import { IconButton } from "../ui/IconButton";
 
@@ -8,7 +9,9 @@ export function VibeModeHeader() {
   const attentionSet = useAgentStore((s) => s.attentionSet);
   const setVibeMode = useAgentStore((s) => s.setVibeMode);
   const vibeSkip = useAgentStore((s) => s.vibeSkip);
+  const stopAgent = useAgentStore((s) => s.stopAgent);
   const vibeCurrentId = useAgentStore((s) => s.vibeCurrentId);
+  const toggleArchive = useSidebarStore((s) => s.toggleArchive);
   const theme = useThemeStore((s) => s.current);
 
   const allAgents = Object.values(agents);
@@ -20,6 +23,18 @@ export function VibeModeHeader() {
 
   // Show skip only when there's more than one agent in queue
   const canSkip = vibeCurrentId && readyCount > 1;
+  const currentAgent = vibeCurrentId ? agents[vibeCurrentId] : null;
+  const isWorking = currentAgent?.status === "working";
+
+  const handleStop = () => {
+    if (vibeCurrentId) stopAgent(vibeCurrentId);
+  };
+
+  const handleArchive = () => {
+    if (!vibeCurrentId) return;
+    toggleArchive(vibeCurrentId);
+    vibeSkip();
+  };
 
   const headerButtonStyle: React.CSSProperties = {
     color: theme.textOnAccent,
@@ -83,8 +98,24 @@ export function VibeModeHeader() {
           : `${totalCount} agent${totalCount !== 1 ? "s" : ""} working`}
       </span>
 
-      {/* Right: skip + exit buttons */}
+      {/* Right: action buttons */}
       <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+        {vibeCurrentId && isWorking && (
+          <IconButton
+            icon={<Square size={11} strokeWidth={2.5} />}
+            tooltip="Stop agent"
+            onClick={handleStop}
+            style={headerButtonStyle}
+          />
+        )}
+        {vibeCurrentId && (
+          <IconButton
+            icon={<Archive size={12} strokeWidth={2.5} />}
+            tooltip="Archive agent"
+            onClick={handleArchive}
+            style={headerButtonStyle}
+          />
+        )}
         {canSkip && (
           <IconButton
             icon={<SkipForward size={13} strokeWidth={2.5} />}
