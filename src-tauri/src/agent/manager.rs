@@ -129,7 +129,7 @@ impl AgentManager {
         serde_json::from_str(&content).map_err(|e| format!("Parse error: {}", e))
     }
 
-    /// Save all current agents to disk.
+    /// Save all current agents to disk (atomic write via temp file + rename).
     pub fn save(&self) -> Result<(), String> {
         let saved: Vec<SavedAgent> = self
             .agents
@@ -146,6 +146,8 @@ impl AgentManager {
         let path = Self::agents_path();
         let json = serde_json::to_string_pretty(&saved)
             .map_err(|e| format!("Serialize error: {}", e))?;
-        std::fs::write(&path, json).map_err(|e| format!("Write error: {}", e))
+        let tmp_path = path.with_extension("json.tmp");
+        std::fs::write(&tmp_path, json).map_err(|e| format!("Write error: {}", e))?;
+        std::fs::rename(&tmp_path, &path).map_err(|e| format!("Rename error: {}", e))
     }
 }

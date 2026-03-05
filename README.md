@@ -36,23 +36,57 @@ Chorus puts every agent in **one window**. Create agents, assign them to project
 ---
 
 <p align="center">
-  <img src="screenshots/dark-overview.png" alt="Chorus — Dark Mode" width="800" />
+  <img src="screenshots/agent-view-dark.png" alt="Chorus — Agent View (Dark)" width="800" />
 </p>
 
 <p align="center">
-  <img src="screenshots/light-overview.png" alt="Chorus — Light Mode" width="800" />
+  <img src="screenshots/agent-view-light.png" alt="Chorus — Agent View (Light)" width="800" />
 </p>
 
 <details>
 <summary><strong>More screenshots</strong></summary>
 
-| Git Quick Actions | Run Commands | New Agent |
-|:-:|:-:|:-:|
-| ![Git menu](screenshots/git-menu-dark.png) | ![Run dialog](screenshots/run-command-dark.png) | ![New agent](screenshots/new-agent-dark.png) |
+### Vibe Mode
+Run all your agents at once and watch them work in a visual overview.
 
-| Diff Viewer | Light Theme |
+| Light | Dark |
 |:-:|:-:|
-| ![Diff viewer](screenshots/diff-viewer.png) | ![Light new agent](screenshots/new-agent-light.png) |
+| ![Vibe Mode Light](screenshots/vibe-mode-light.png) | ![Vibe Mode Dark](screenshots/vibe-mode-dark.png) |
+
+### New Agent Dialog
+Start from a template or configure from scratch — pick your model, working directory, and permission mode.
+
+<p align="center">
+  <img src="screenshots/new-agent-dialog.png" alt="New Agent Dialog" width="500" />
+</p>
+
+### Automations
+Schedule prompts to run on a recurring basis — daily, weekly, monthly, or custom.
+
+| Light | Dark |
+|:-:|:-:|
+| ![Automations Light](screenshots/automations-light.png) | ![Automations Dark](screenshots/automations-dark.png) |
+
+### MCP Servers
+Add and manage MCP (Model Context Protocol) servers directly from the UI.
+
+| Light | Dark |
+|:-:|:-:|
+| ![MCP Servers Light](screenshots/mcp-servers-light.png) | ![MCP Servers Dark](screenshots/mcp-servers-dark.png) |
+
+### Skills & Plugins
+Browse installed Claude Code skills, plugins, and slash commands.
+
+| Light | Dark |
+|:-:|:-:|
+| ![Skills Light](screenshots/skills-light.png) | ![Skills Dark](screenshots/skills-dark.png) |
+
+### Hooks & Skills Editor
+Configure hooks and create custom skills through a visual editor.
+
+| Light | Dark |
+|:-:|:-:|
+| ![Hooks Light](screenshots/hooks-light.png) | ![Hooks Dark](screenshots/hooks-dark.png) |
 
 </details>
 
@@ -101,9 +135,6 @@ Edit your project and user `CLAUDE.md` files without leaving the app. Two-tab ed
 
 ### Agent Config Panel
 Fine-tune each agent: change the model, set system prompts, configure max turns and budget limits, manage permission modes, and control allowed/disallowed tools. Changes that require a restart are clearly marked with a "Save & Restart" button.
-
-### Cost Dashboard
-Track spending across all your agents in one view. See total cost, per-agent breakdowns, turn counts, and compact agents to reduce context usage — all from a single dialog.
 
 ### MCP Server Management
 Add, remove, and manage MCP (Model Context Protocol) servers directly from the UI. Supports both stdio and SSE transports, with scope control (user vs. project). No more editing JSON configs by hand.
@@ -197,7 +228,6 @@ Hit **Stop** to interrupt an agent mid-task. Chorus transparently restarts the p
 | `Shift+Cmd+M` | MCP Servers |
 | `Shift+Cmd+H` | Hooks & Skills |
 | `Cmd+.` | Agent Config |
-| `Shift+Cmd+D` | Cost Dashboard |
 | `Shift+Cmd+T` | Toggle light/dark theme |
 | `Cmd+K` | Show all shortcuts |
 

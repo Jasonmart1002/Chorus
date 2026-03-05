@@ -71,8 +71,8 @@ pub async fn mcp_list() -> Result<Vec<McpServer>, String> {
             let name = name_part.trim().to_string();
             let rest = rest.trim();
             let (command, scope) = if let Some(idx) = rest.rfind('(') {
-                let scope = rest[idx + 1..].trim_end_matches(')').trim().to_string();
-                let cmd = rest[..idx].trim().to_string();
+                let scope = rest.get(idx + 1..).unwrap_or("").trim_end_matches(')').trim().to_string();
+                let cmd = rest.get(..idx).unwrap_or("").trim().to_string();
                 (cmd, scope)
             } else {
                 (rest.to_string(), "user".to_string())

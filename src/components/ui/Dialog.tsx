@@ -43,7 +43,10 @@ export function Dialog({
       });
     }
     return () => {
-      if (previousFocusRef.current instanceof HTMLElement) {
+      if (
+        previousFocusRef.current instanceof HTMLElement &&
+        previousFocusRef.current.ownerDocument?.contains(previousFocusRef.current)
+      ) {
         previousFocusRef.current.focus();
       }
     };

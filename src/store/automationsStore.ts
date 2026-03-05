@@ -186,7 +186,7 @@ export const useAutomationsStore = create<AutomationsStore>((set, get) => ({
       } catch {
         // Non-critical — agent will appear on next refresh
       }
-      get().fetchAutomations();
+      await get().fetchAutomations();
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       toast.error(`Failed to run automation: ${message}`);
@@ -201,7 +201,7 @@ export const useAutomationsStore = create<AutomationsStore>((set, get) => ({
         return { runningAutomations: rest };
       });
       toast.info("Automation stopped");
-      get().fetchAutomations();
+      await get().fetchAutomations();
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       toast.error(`Failed to stop automation: ${message}`);
@@ -243,7 +243,7 @@ export const useAutomationsStore = create<AutomationsStore>((set, get) => ({
       "automation-fired",
       async (event) => {
         toast.info(`Automation "${event.payload.automation_name}" fired`);
-        get().fetchAutomations();
+        await get().fetchAutomations().catch(() => {});
         // Refresh agent list so the automation-spawned agent appears in the sidebar
         try {
           const agents = await invoke<import("../types/agent").Agent[]>("list_agents");
@@ -286,7 +286,7 @@ export const useAutomationsStore = create<AutomationsStore>((set, get) => ({
         toast.success(
           `Automation "${event.payload.automation_name}" completed`
         );
-        get().fetchAutomations();
+        get().fetchAutomations().catch(() => {});
       }
     );
 
@@ -298,7 +298,7 @@ export const useAutomationsStore = create<AutomationsStore>((set, get) => ({
             state.runningAutomations;
           return { runningAutomations: rest };
         });
-        get().fetchAutomations();
+        get().fetchAutomations().catch(() => {});
       }
     );
   },

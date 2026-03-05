@@ -66,16 +66,16 @@ interface Props {
 }
 
 type RenderItem =
-  | { kind: "text"; text: string }
-  | { kind: "tool_use"; block: ToolUseBlock }
-  | { kind: "tool_group"; name: string; blocks: ToolUseBlock[] }
-  | { kind: "activity_group"; blocks: ToolUseBlock[] }
-  | { kind: "result"; message: ResultMessage }
-  | { kind: "user_prompt"; text: string }
-  | { kind: "system_init" }
-  | { kind: "context_compact" }
-  | { kind: "ask_user"; block: ToolUseBlock }
-  | { kind: "plan"; block: ToolUseBlock };
+  | { kind: "text"; text: string; key: string }
+  | { kind: "tool_use"; block: ToolUseBlock; key: string }
+  | { kind: "tool_group"; name: string; blocks: ToolUseBlock[]; key: string }
+  | { kind: "activity_group"; blocks: ToolUseBlock[]; key: string }
+  | { kind: "result"; message: ResultMessage; key: string }
+  | { kind: "user_prompt"; text: string; key: string }
+  | { kind: "system_init"; key: string }
+  | { kind: "context_compact"; key: string }
+  | { kind: "ask_user"; block: ToolUseBlock; key: string }
+  | { kind: "plan"; block: ToolUseBlock; key: string };
 
 // ---------------------------------------------------------------------------
 // Message filtering & flattening
@@ -103,18 +103,19 @@ function shouldHideMessage(msg: SDKMessage): boolean {
 function flattenMessages(messages: SDKMessage[]): RenderItem[] {
   const items: RenderItem[] = [];
   let seenInit = false;
+  let seq = 0;
 
   for (const msg of messages) {
     switch (msg.type) {
       case "user_prompt":
-        items.push({ kind: "user_prompt", text: msg.text });
+        items.push({ kind: "user_prompt", text: msg.text, key: `up-${seq++}` });
         break;
       case "system":
         if (msg.subtype === "init" && !seenInit) {
           seenInit = true;
-          items.push({ kind: "system_init" });
+          items.push({ kind: "system_init", key: `si-${seq++}` });
         } else if (isCompactMessage(msg)) {
-          items.push({ kind: "context_compact" });
+          items.push({ kind: "context_compact", key: `cc-${seq++}` });
         }
         break;
       case "assistant": {
@@ -122,15 +123,15 @@ function flattenMessages(messages: SDKMessage[]): RenderItem[] {
         if (content) {
           for (const block of content) {
             if (block.type === "text" && block.text.trim()) {
-              items.push({ kind: "text", text: block.text });
+              items.push({ kind: "text", text: block.text, key: `txt-${seq++}` });
             } else if (block.type === "tool_use") {
               const tb = block as ToolUseBlock;
               if (tb.name === "AskUserQuestion") {
-                items.push({ kind: "ask_user", block: tb });
+                items.push({ kind: "ask_user", block: tb, key: `ask-${tb.id}` });
               } else if (tb.name === "ExitPlanMode") {
-                items.push({ kind: "plan", block: tb });
+                items.push({ kind: "plan", block: tb, key: `plan-${tb.id}` });
               } else {
-                items.push({ kind: "tool_use", block: tb });
+                items.push({ kind: "tool_use", block: tb, key: `tu-${tb.id}` });
               }
             }
           }
@@ -138,7 +139,7 @@ function flattenMessages(messages: SDKMessage[]): RenderItem[] {
         break;
       }
       case "result":
-        items.push({ kind: "result", message: msg });
+        items.push({ kind: "result", message: msg, key: `res-${seq++}` });
         break;
     }
   }
@@ -160,12 +161,13 @@ function groupConsecutiveToolItems(items: RenderItem[]): RenderItem[] {
         (it) => (it as { kind: "tool_use"; block: ToolUseBlock }).block
       );
       if (run.length >= 2) {
+        const groupKey = `grp-${run[0].id}`;
         // Check if all the same name — use simpler tool_group
         const allSameName = run.every((b) => b.name === run[0].name);
         if (allSameName) {
-          result.push({ kind: "tool_group", name: run[0].name, blocks: run });
+          result.push({ kind: "tool_group", name: run[0].name, blocks: run, key: groupKey });
         } else {
-          result.push({ kind: "activity_group", blocks: run });
+          result.push({ kind: "activity_group", blocks: run, key: groupKey });
         }
       } else {
         result.push(item);
@@ -254,8 +256,8 @@ export function MessageStream({ messages, agentId }: Props) {
         fontFamily: theme.fontBody,
       }}
     >
-      {grouped.map((item, i) => (
-        <RenderItemView key={i} item={item} agentId={agentId} />
+      {grouped.map((item) => (
+        <RenderItemView key={item.key} item={item} agentId={agentId} />
       ))}
       <div ref={bottomRef} />
     </div>
@@ -790,7 +792,7 @@ function ToolGroupView({ name, blocks }: { name: string; blocks: ToolUseBlock[] 
           }}
         >
           {blocks.map((b, i) => (
-            <ToolUseView key={i} block={b} nested />
+            <ToolUseView key={b.id} block={b} nested />
           ))}
         </div>
       )}
@@ -929,7 +931,7 @@ function ActivityGroupView({ blocks }: { blocks: ToolUseBlock[] }) {
           }}
         >
           {blocks.map((b, i) => (
-            <ToolUseView key={i} block={b} nested />
+            <ToolUseView key={b.id} block={b} nested />
           ))}
         </div>
       )}

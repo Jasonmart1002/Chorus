@@ -129,7 +129,9 @@ impl AutomationsState {
         let path = Self::data_path();
         let json = serde_json::to_string_pretty(&self.automations)
             .map_err(|e| format!("Serialize error: {}", e))?;
-        std::fs::write(&path, json).map_err(|e| format!("Write error: {}", e))
+        let tmp_path = path.with_extension("json.tmp");
+        std::fs::write(&tmp_path, json).map_err(|e| format!("Write error: {}", e))?;
+        std::fs::rename(&tmp_path, &path).map_err(|e| format!("Rename error: {}", e))
     }
 }
 
@@ -299,8 +301,13 @@ pub async fn tick(
 
     for automation in &due {
         let result = fire_automation(automation, manager, app).await;
-        let status = if result.is_ok() { "success" } else { "error" };
-        let agent_id = result.unwrap_or_default();
+        let (status, agent_id) = match &result {
+            Ok(id) => ("success", id.clone()),
+            Err(e) => {
+                eprintln!("Automation '{}' failed: {}", automation.name, e);
+                ("error", String::new())
+            }
+        };
 
         // Update state
         {

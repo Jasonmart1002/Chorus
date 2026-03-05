@@ -36,7 +36,9 @@ pub fn kill_all_children() {
 
 fn register_pid(pid: u32) {
     if let Ok(mut pids) = pid_registry().lock() {
-        pids.push(pid);
+        if !pids.contains(&pid) {
+            pids.push(pid);
+        }
     }
 }
 

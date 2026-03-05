@@ -170,8 +170,8 @@ pub async fn kill_agent(
     manager: tauri::State<'_, ManagerState>,
 ) -> Result<(), String> {
     let mut mgr = manager.lock().await;
-    if let Some(process) = mgr.processes.get_mut(&agent_id) {
-        process.kill()?;
+    if let Some(mut process) = mgr.processes.remove(&agent_id) {
+        let _ = process.kill();
     }
     mgr.update_status(&agent_id, crate::agent::state::AgentStatus::Exited);
     Ok(())

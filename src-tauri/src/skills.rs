@@ -70,11 +70,22 @@ fn parse_frontmatter(content: &str) -> (serde_yaml::Value, String) {
     }
 
     // Find the closing ---
-    let after_first = &trimmed[3..];
+    let after_first = match trimmed.get(3..) {
+        Some(s) => s,
+        None => return (serde_yaml::Value::Mapping(Default::default()), content.to_string()),
+    };
     if let Some(end_idx) = after_first.find("\n---") {
         let yaml_str = &after_first[..end_idx];
-        let body_start = end_idx + 4; // skip past \n---
-        let body = after_first[body_start..].trim_start_matches('\n').to_string();
+        // Skip past "\n---" (and possible "\r" before it)
+        let mut body_start = end_idx + 4;
+        // Handle CRLF: if there's a trailing \n or \r\n after the closing ---, skip it
+        if after_first.as_bytes().get(body_start) == Some(&b'\r') {
+            body_start += 1;
+        }
+        if after_first.as_bytes().get(body_start) == Some(&b'\n') {
+            body_start += 1;
+        }
+        let body = after_first.get(body_start..).unwrap_or("").trim_start_matches('\n').to_string();
         let frontmatter: serde_yaml::Value =
             serde_yaml::from_str(yaml_str).unwrap_or(serde_yaml::Value::Mapping(Default::default()));
         (frontmatter, body)
